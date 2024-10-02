@@ -8,7 +8,7 @@
         real :: gr_soln = 0.       !! 1/day         |Growth factor for pers bac in soil solution
         real :: do_sorb = 0.       !! 1/day         |Die-off factor for pers bac adsorbed to soil part
         real :: gr_sorb = 0.       !! 1/day         |Growth factor for pers bac adsorbed to soil part
-        real :: kd = 0.            !! none          |Pathogen part coeff bet sol and sorbed phase in surf runoff
+        real :: kd = 0.            !! none          |Pthogen part coeff bet sol and sorbed phase in surf runoff
         real :: t_adj = 0.         !! none          |temp adj factor for bac die-off/growth
         real :: washoff = 0.       !! none          |frac of pers bac on foliage washed off by a rainfall event
         real :: do_plnt = 0.       !! 1/day         |Die-off factor for pers bac on foliage
@@ -22,7 +22,8 @@
         real :: gr_stream = 0.     !! 1/day         |growth factor for persistent pathogen in streams
         real :: do_res = 0.        !! 1/day         |Die-off factor for less persistent pathogen in reservoirs
         real :: gr_res = 0.        !! 1/day         |growth factor for less persistent pathogen in reservoirs
-        real :: conc_min           !!               |minimum pathogen concentration
+        real :: swf = 0.           !! cfu           |fraction of manure containing active colony forming units
+        real :: conc_min           !!               |
       end type pathogen_db
       type (pathogen_db), dimension(:), allocatable  :: path_db
       

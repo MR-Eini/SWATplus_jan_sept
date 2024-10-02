@@ -4,22 +4,19 @@
       use hydrograph_module
       use maximum_data_module
       use calibration_data_module
-      use hru_module
 
       implicit none
       
       integer :: date_time(8)           !              |
       character*10 b(3)                 !              |
-      integer :: iob
-      integer, allocatable, dimension(:) :: cmd_next
     
-      prog = " SWAT+ Sep 17 2024        MODULAR Rev 2024.61.0.1"
+      prog = " SWAT+ Jan 11 2024        MODULAR Rev 2024.61.0"
 
       write (*,1000)
       open (9003,file='simulation.out')
       write (9003,1000)
  1000 format(1x,"                  SWAT+               ",/,             &
-     &          "            Revision 61.0.1           ",/,             &
+     &          "             Revision 61.0            ",/,             &
      &          "      Soil & Water Assessment Tool    ",/,             &
      &          "               PC Version             ",/,             &
      &          "    Program reading . . . executing",/)
@@ -42,21 +39,6 @@
       call exco_db_read
       call dr_db_read
       
-      allocate (cmd_next(sp_ob%objs))
-      icmd = sp_ob1%objs
-      iob = 0
-        do while (icmd /= 0)
-            iob = iob + 1
-          cmd_next(iob) = icmd
-          write (7777,*) icmd, ob(icmd)%name, ob(icmd)%typ,               &  
-           ob(icmd)%props, ob(icmd)%props2, ob(icmd)%src_tot,           &
-           ob(icmd)%rcv_tot !, (ob(icmd)%obj_out,ob(icmd)%obtyp_out(i),   &
-           !ob(icmd)%obtypno_out(i), ob(icmd)%htyp_out(i), i = 1,        &
-           !ob(icmd)%src_tot)
-         
-         icmd = ob(icmd)%cmd_next
-        end do 
-          
       call cli_lapse
       call object_read_output
 
@@ -102,19 +84,12 @@
       call wet_read
       call wet_read_salt_cs
       if (db_mx%wet_dat > 0) call wet_all_initial
-      call wet_fp_init
-      
-      !! initialize carbon and nutrient contents for each hru
-      do ihru = 1, sp_ob%hru
-        isol = hru(ihru)%dbs%soil
-        call soil_nutcarb_init(isol)
-      end do
+      if (bsn_cc%i_fpwet == 2) call wet_fp_init
       
       call proc_cal
       
       call proc_open
       
-        
       ! compute unit hydrograph parameters for subdaily runoff
       call unit_hyd_ru_hru
 

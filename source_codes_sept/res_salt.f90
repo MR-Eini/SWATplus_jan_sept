@@ -83,6 +83,7 @@
         enddo !go to next salt ion
         
       endif
-         
+      
+      
       return
       end subroutine res_salt

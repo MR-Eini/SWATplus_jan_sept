@@ -42,7 +42,7 @@
 
       integer :: j                  !none          |same as ihru (hru number)
       integer :: j1                 !none          |counter (rtb)
-      integer :: ulu                !              | 
+      real :: ulu                   !              | 
       integer :: iob                !              |
       integer :: ith                !              |
       integer :: iwgn               !              |
@@ -75,8 +75,6 @@
       real :: sw_volume_begin
       real :: soil_prof_labp
       real :: sum_conc,sum_mass,sum_sorb !rtb salt
-      real :: saltcon,qsurf,sedppm !Jeong 2024
-     
       
       j = ihru
       
@@ -136,8 +134,7 @@
       !! zero pesticide balance variables
       if (cs_db%num_pests > 0) then
         do ipest = 1, cs_db%num_pests
-          !! zero all variables except pest in soil and in/on plant
-          hpestb_d(j)%pest(ipest) = hpestb_d(j)%pest(ipest) * 0.
+          hpestb_d(j)%pest(ipest) = pestbz
         end do
       end if
         
@@ -180,6 +177,10 @@
           if (time%end_yr == 1) then
             pcom(j)%rot_yr = pcom(j)%rot_yr + 1
           end if
+          !! increment days since last plant and harvest
+          if (pcom(j)%days_plant > 0) pcom(j)%days_plant = pcom(j)%days_plant + 1
+          if (pcom(j)%days_harv > 0) pcom(j)%days_harv = pcom(j)%days_harv + 1
+          if (pcom(j)%days_irr > 0) pcom(j)%days_irr = pcom(j)%days_irr + 1
           do iauto = 1, sched(isched)%num_autos
             id = sched(isched)%num_db(iauto)
             do iac = 1, dtbl_lum(id)%acts
@@ -190,11 +191,6 @@
           end do
         end if
         
-        !! increment days since last plant and harvest
-        pcom(j)%days_plant = pcom(j)%days_plant + 1
-        pcom(j)%days_harv = pcom(j)%days_harv + 1
-        pcom(j)%days_irr = pcom(j)%days_irr + 1
-          
         !! update base zero total heat units
         if (w%tave > 0. .and. wgn_pms(iwgn)%phutot > 0.01) then
            phubase(j) = phubase(j) + w%tave / wgn_pms(iwgn)%phutot
@@ -222,7 +218,7 @@
         if (cs_db%num_cs > 0) then
           call cs_rctn_hru
           call cs_sorb_hru
-        endif
+				endif
         
         !! calculate soil temperature for soil layers
         call stmp_solt
@@ -239,8 +235,7 @@
           !!route incoming surface runoff
           if (ires > 0) then
             !! add surface runon to wetland
-            ht1 = ob(icmd)%hin_sur + tile_fr_surf * ob(icmd)%hin_til
-            wet(j) = wet(j) + ht1
+            wet(j) = wet(j) + ob(icmd)%hin_sur + tile_fr_surf * ob(icmd)%hin_til
           else
             !! route across hru - infiltrate and deposit sediment
             call rls_routesurf (icmd, tile_fr_surf)
@@ -254,9 +249,9 @@
         end if
           
         !!add tile flow to tile (subirrigation and saturated buffer)
-        !if (ob(icmd)%hin_til%flo > 1.e-6 .and. tile_fr_surf > 1.e-6) then
-        !  call rls_routetile (icmd, tile_fr_surf)
-        !end if
+        if (ob(icmd)%hin_til%flo > 1.e-6 .and. tile_fr_surf > 1.e-6) then
+          call rls_routetile (icmd, tile_fr_surf)
+        end if
         
         !!add aquifer flow to bottom soil layer and redistribute upwards
         if (ob(icmd)%hin_aqu%flo > 0) then
@@ -297,12 +292,10 @@
         endif
         
         !! wetland/paddy processes
-        ht2 = hz
-        wet_outflow = 0.
         if (ires > 0) then
           call wetland_control
         else
-          ht2%flo = ht2%flo + wet(j)%flo 
+          ht2%flo = wet(j)%flo * hru(j)%area_ha * 10.
           wet(j)%flo = 0.
         end if
  
@@ -317,7 +310,7 @@
         inflpcp = Max(0., inflpcp)
          
         !! add irrigation to subdaily effective precip
-        if (time%step > 1) then
+        if (time%step > 0) then
           w%ts(:) = w%ts(:) + irrig(j)%applied / time%step
         end if
         
@@ -357,13 +350,8 @@
 	      call cbn_zhang2
 	    end if
 
-        call nut_nitvol
-
-	    if (bsn_cc%sol_P_model == 1) then  
-          call nut_pminrl2
-        else
-          call nut_pminrl
-        end if
+        call nut_nitvol  
+        call nut_pminrl
         
         !! compute biozone processes in septic HRUs
         !! if 1) current is septic hru and 2) soil temperature is above zero
@@ -475,9 +463,6 @@
  
         !! compute pesticide washoff   
         if (w%precip >= 2.54) call pest_washp
-        
-        !! compute pesticide uptake
-        call pest_pl_up
 
         !! compute pesticide degradation
         call pest_decay
@@ -517,29 +502,13 @@
 
         !! compute nitrate movement leaching
         call nut_nlch
-        
-        if (ires > 0) then
-          if (wet(j)%flo>0) then
-            sedppm=wet(j)%sed/wet(j)%flo*1000000.
-          else
-            sedppm=0.
-          end if
-          
-          if (wet_dat_c(ires)%hyd.eq.'paddy') then !.and.time%yrs > pco%nyskip) then
-            if (wet_ob(j)%depth > 100.) then
-           write(100100,'(4(I6,","),20(f20.1,","))') time%yrc,time%mo,time%day_mo,j,w%precip,irrig(j)%applied,hru(j)%water_seep,     &
-            pet_day,etday,wet_ob(j)%weir_hgt*1000,wet_ob(j)%depth*1000.,ht2%flo/(hru(j)%area_ha*10.),soil(j)%sw,sedppm,ht2%sed*1000, &
-            wet(j)%no3,ht2%no3,pcom(j)%lai_sum,saltcon 
-            end if
-          end if
-        end if
 
         !! compute phosphorus movement
         call nut_solp
 
         !rtb salt
         if (cs_db%num_salts > 0) then
-          if(salt_atmo == "y") then
+          if(salt_atmo) then
             call salt_rain !add salt in atmospheric deposition to soil profile
           endif
           call salt_roadsalt !add salt in applied road salt to soil profile
@@ -548,12 +517,15 @@
         
         !rtb cs
         if (cs_db%num_cs > 0) then
-          if(cs_atmo == "y") then
+          if(cs_atmo) then
             call cs_rain
           endif
           call cs_lch
         endif
         
+        !! compute chl-a, CBOD and dissolved oxygen loadings
+        call swr_subwq
+
         !! compute pathogen transport
         if (cs_db%num_paths > 0.) then
           call path_ls_swrouting
@@ -563,11 +535,11 @@
 
         !! compute loadings from urban areas
         if (hru(j)%luse%urb_lu > 0) then
-	      if (time%step == 1) then
-            call hru_urban ! daily simulation
-	      else
-            call hru_urbanhr ! subdaily simulation J.Jeong 4/20/2009
-	      endif
+	     if(time%step == 0) then
+	        call hru_urban ! daily simulation
+	     else
+		     call hru_urbanhr ! subdaily simulation J.Jeong 4/20/2009
+	     endif
 	    endif	  
 
         !! compute sediment loading in lateral flow and add to sedyld
@@ -598,7 +570,6 @@
         !! ht2%flo is outflow from wetland or total saturation excess if no wetland
         if(ht2%flo > 0.) then
           wet_outflow = ht2%flo / hru(j)%area_ha / 10.   !! mm = m3/ha *ha/10000m2 *1000mm/m
-          qday = qday + wet_outflow
           qdr(j) = qdr(j) + wet_outflow
           ht2%flo = 0.
         end if
@@ -611,9 +582,6 @@
         qdr(j) = qday + latq(j) + qtile
 
         if (qdr(j) < 0.) qdr(j) = 0.
-
-        !! compute chl-a, CBOD and dissolved oxygen loadings
-        call swr_subwq
 
         xx = sed_con(j) + soln_con(j) + solp_con(j) + orgn_con(j) + orgp_con(j)
         if (xx > 1.e-6) then
@@ -633,7 +601,6 @@
       if (ob(iob)%ru_tot > 0) then
         iob_out = sp_ob1%ru + ob(iob)%ru(1) - 1
       end if
-      qsurf=surfq(j)
       
       hwb_d(j)%surq_cha = 0.
       hwb_d(j)%latq_cha = 0.
@@ -705,9 +672,7 @@
         hwb_d(j)%ecanopy = canev
         hwb_d(j)%eplant = ep_day
         hwb_d(j)%esoil = es_day + hru(j)%water_evap 
-        hwb_d(j)%wet_evap = hru(j)%water_evap 
-        hwb_d(j)%wet_out = wet_outflow
-        hwb_d(j)%wet_stor = wet(j)%flo / (10. * hru(j)%area_ha)
+        hwb_d(j)%wet_out = hru(j)%water_evap 
         hwb_d(j)%surq_cont = surfq(j)
         if (j==1 .and. surfq(j) > 1.) then
           icn = 0
@@ -723,9 +688,8 @@
         irrig(j)%applied = 0.
         irrig(j)%runoff = 0.
         hwb_d(j)%surq_runon = ls_overq
-        hwb_d(j)%latq_runon = latqrunon 
-        hwb_d(j)%overbank = hru(j)%wet_obank_in
-        hru(j)%wet_obank_in = 0.
+        hwb_d(j)%latq_runon = latqrunon !/ (10. * hru(j)%area_ha) 
+        ! hwb_d(j)%overbank = over_flow     !overbank is not added yet
 
         hwb_d(j)%gwsoil = gwsoilq(j) !rtb gwflow - groundwater transferred to soil profile
         if (ires<1) hwb_d(j)%satex = satexq(j) !rtb gwflow - saturation excess generated from high water table
@@ -815,7 +779,7 @@
         hpw_d(j)%nplnt = pl_mass(j)%tot_com%n
         hpw_d(j)%percn = percn(j)
         !rtb gwflow: store nitrate leaching concentration for gwflow module
-        if(bsn_cc%gwflow == 1  .and. gw_solute_flag == 1) then
+        if(bsn_cc%gwflow .and. gw_solute_flag) then
           gwflow_percsol(j,1) = percn(j)
         endif
         hpw_d(j)%pplnt = pl_mass(j)%tot_com%p

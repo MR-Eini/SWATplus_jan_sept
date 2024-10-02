@@ -98,14 +98,8 @@
       end type soil_constituent_mass
       type (soil_constituent_mass), dimension (:), allocatable :: cs_soil
 
-      ! plant constituent mass - dimensioned by hru
-      type plant_constituent_mass
-        type (constituent_mass), dimension (:), allocatable :: pl_in    !constituent in plant
-        type (constituent_mass), dimension (:), allocatable :: pl_on    !constituent on plant
-        type (constituent_mass), dimension (:), allocatable :: pl_up    !constituent uptake by plant
-      end type plant_constituent_mass
-      
-      type (plant_constituent_mass), dimension (:), allocatable :: cs_pl
+      ! plant constituent mass
+      type (constituent_mass), dimension (:), allocatable :: cs_pl
 
       ! aquifer constituent mass
       type (constituent_mass), dimension (:), allocatable :: cs_aqu
@@ -303,10 +297,9 @@
       type (cs_irrigation_concentrations), dimension(:),allocatable:: cs_water_irr
       
       !daily output for constituents                
-      !logical :: cs_obs_file                               !               |flag: file for channels with daily output
-      integer :: cs_obs_file                                !               |flag: file for channels with daily output      
-      integer :: cs_str_nobs                                !                |number of channels for daily output
-      integer, dimension (:), allocatable :: cs_str_obs     !                |list of channels for daily output
+      logical :: cs_obs_file                               !                |flag: file for channels with daily output
+      integer :: cs_str_nobs                               !                |number of channels for daily output
+      integer, dimension (:), allocatable :: cs_str_obs    !                |list of channels for daily output
       
       
       !header for routing unit salt balance output

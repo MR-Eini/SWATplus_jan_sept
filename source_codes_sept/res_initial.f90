@@ -13,6 +13,9 @@
       implicit none
       
       integer :: ires        !none          |counter
+      integer :: iprop       !              |     
+      integer :: ihyd        !none          |counter 
+      integer :: ised        !none          |counter 
       integer :: lnvol       !              |
       real :: resdif         !              |
       integer :: i           !none          |counter
@@ -22,25 +25,25 @@
       integer :: ipest       !none          |counter
       integer :: ipath       !              |
       integer :: isalt       !              |counter for salt ions !rtb salt
+      integer :: ics         !              |counter for constituents !rtb cs
       integer :: ipest_db    !none      |counter
 
       do ires = 1, sp_ob%res
-        !! set initial volumes for res and hru types and convert units
+        !! set initial volumes for res and hru types
+        !! convert units
+        iprop = res_ob(ires)%props
+        ihyd = res_dat(iprop)%hyd
         res_ob(ires)%ob  = sp_ob1%res + ires - 1
-        res_ob(ires)%evol = res_hyd(ires)%evol * 10000.       !! ha-m => m**3
-        res_ob(ires)%pvol = res_hyd(ires)%pvol * 10000.       !! ha-m => m**3
-        res_ob(ires)%esa = res_hyd(ires)%esa
-        res_ob(ires)%psa = res_hyd(ires)%psa
+        res_ob(ires)%evol = res_hyd(ihyd)%evol * 10000.       !! ha-m => m**3
+        res_ob(ires)%pvol = res_hyd(ihyd)%pvol * 10000.       !! ha-m => m**3
+        res_ob(ires)%esa = res_hyd(ihyd)%esa
+        res_ob(ires)%psa = res_hyd(ihyd)%psa
         !! set initial weir height to principal depth - m
         res_ob(ires)%weir_hgt = res_ob(ires)%pvol / (res_ob(ires)%psa * 10000.)
         
-        !! use br1 as lag - then compute actual br1 (no option to input actual br1)
-        res_ob(ires)%lag_up = res_hyd(ires)%br1
-        res_ob(ires)%lag_down = res_hyd(ires)%br2
-        
         !! calculate shape parameters for surface area equation
-        resdif = res_hyd(ires)%evol - res_hyd(ires)%pvol
-        if ((res_hyd(ires)%esa - res_hyd(ires)%psa) > 0. .and. resdif > 0.) then
+        resdif = res_hyd(ihyd)%evol - res_hyd(ihyd)%pvol
+        if ((res_hyd(ihyd)%esa - res_hyd(ihyd)%psa) > 0. .and. resdif > 0.) then
           lnvol = Log10(res_ob(ires)%evol) - Log10(res_ob(ires)%pvol)
           if (lnvol > 1.e-4) then
             res_ob(ires)%br2 = (Log10(res_ob(ires)%esa) - Log10(res_ob(ires)%psa)) / lnvol
@@ -87,7 +90,8 @@
             res_water(ires)%pest(ipest) = pest_water_ini(init)%water(ipest)
             res_benthic(ires)%pest(ipest) = pest_water_ini(init)%benthic(ipest)
             !! calculate mixing velocity using molecular weight and porosity
-            res_ob(ires)%aq_mix(ipest) = pestdb(ipest_db)%mol_wt * (1. - res_sed(ires)%bd / 2.65)
+            ised = res_dat(idat)%sed
+            res_ob(ires)%aq_mix(ipest) = pestdb(ipest_db)%mol_wt * (1. - res_sed(ised)%bd / 2.65)
           end do
                   
           !! initialize pathogens in reservoir water and benthic from input data
@@ -122,7 +126,7 @@
           !rtb cs
           if(cs_db%num_cs > 0) then
             idat = res_ob(ires)%props
-            icon = res_dat(idat)%cs !database to use (in cs.res file)
+            icon = res_dat(idat)%cs !database to use (in cs_res file)
             if(icon > 0) then
               !seo4
               res_water(ires)%csc(1) = res_cs_data(icon)%c_seo4 !concentration (g/m3)

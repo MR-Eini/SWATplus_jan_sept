@@ -218,7 +218,8 @@
       endif
 
       return
-     
+      
+      
 100   format (4i6,2i8,500e15.4)      
 
       end subroutine wet_salt_output

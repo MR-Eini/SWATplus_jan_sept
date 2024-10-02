@@ -40,7 +40,6 @@
       use mgt_operations_module
       use hru_module, only : hru, ihru, ipl, phubase, yr_skip
       use plant_module
-      use soil_module
       use time_module
       use climate_module
       use basin_module
@@ -76,6 +75,7 @@
       integer :: mo                  !              |
       integer :: day_mo              !              |
       integer :: iwallo, imallo
+      
       time%yrc = time%yrc_start
       
       !! generate precip for the first day - %precip_next
@@ -141,7 +141,7 @@
         !! set initial soil water for hru, basin and lsu - for checking water balance
         if (pco%sw_init == "n") then
           if (time%yrs > pco%nyskip) then
-            call basin_sw_init     !***jga 
+            call basin_sw_init
             call aqu_pest_output_init
             pco%sw_init = "y"  !! won't reset again
           end if
@@ -226,17 +226,12 @@
                 call conditions (j, id)
                 call actions (j, iob, id)
               end if
-              !! check every hru for land use change
+              !! have to check every hru for land use change
               if (upd_cond(iupd)%typ == "lu_change") then
                 do j = 1, sp_ob%hru
                   call conditions (j, id)
                   call actions (j, iob, id)
                 end do
-              end if
-              !! change the land use that is specified
-              if (upd_cond(iupd)%typ == "lu_change1") then
-                call conditions (j, id)
-                call actions (j, iob, id)
               end if
             !end if            
           end do
@@ -288,7 +283,7 @@
         if (sp_ob%hru > 0) then
         do iplt = 1, basin_plants
           crop_yld_t_ha = bsn_crop_yld(iplt)%yield / (bsn_crop_yld(iplt)%area_ha + 1.e-6)
-          write (5100,*) time%yrc, iplt, plts_bsn(iplt), bsn_crop_yld(iplt)%area_ha,            &
+          write (5100,*) time%yrc, iplt, plants_bsn(iplt), bsn_crop_yld(iplt)%area_ha,            &
                                                 bsn_crop_yld(iplt)%yield, crop_yld_t_ha
           bsn_crop_yld_aa(iplt)%area_ha = bsn_crop_yld_aa(iplt)%area_ha + bsn_crop_yld(iplt)%area_ha
           bsn_crop_yld_aa(iplt)%yield = bsn_crop_yld_aa(iplt)%yield + bsn_crop_yld(iplt)%yield
@@ -297,7 +292,7 @@
             crop_yld_t_ha = bsn_crop_yld_aa(iplt)%yield / (bsn_crop_yld_aa(iplt)%area_ha + 1.e-6)
             bsn_crop_yld_aa(iplt)%area_ha = bsn_crop_yld_aa(iplt)%area_ha / time%yrs_prt
             bsn_crop_yld_aa(iplt)%yield = bsn_crop_yld_aa(iplt)%yield / time%yrs_prt
-            write (5101,*) time%yrc, iplt, plts_bsn(iplt), bsn_crop_yld_aa(iplt)%area_ha,   &
+            write (5101,*) time%yrc, iplt, plants_bsn(iplt), bsn_crop_yld_aa(iplt)%area_ha,   &
                                                 bsn_crop_yld_aa(iplt)%yield, crop_yld_t_ha
             bsn_crop_yld_aa(iplt) = bsn_crop_yld_z
           end if
@@ -349,6 +344,7 @@
               if (pldb(idp)%typ == "perennial") then
                 pcom(j)%plcur(ipl)%curyr_mat = pcom(j)%plcur(ipl)%curyr_mat + 1
                 pcom(j)%plcur(ipl)%curyr_mat = Min(pcom(j)%plcur(ipl)%curyr_mat,pldb(idp)%mat_yrs)
+                pcom(j)%plcur(ipl)%curyr_gro = pcom(j)%plcur(ipl)%curyr_gro + 1
               end if
             end if
           end do
@@ -373,16 +369,6 @@
         time%yrc = time%yrc + 1
       end do            !!     end annual loop
       
-      do ich = 1, sp_ob%chandeg
-        !! write channel morphology - downcutting and widening
-        ch_morph(ich)%w_yr = ch_morph(ich)%w_yr / sd_ch(ich)%chw / time%yrs_prt
-        ch_morph(ich)%d_yr = ch_morph(ich)%d_yr / sd_ch(ich)%chd / time%yrs_prt
-        ch_morph(ich)%fp_mm = ch_morph(ich)%fp_mm / (3. * sd_ch(ich)%chw *           &
-                                         sd_ch(ich)%chl * 1000.) / time%yrs_prt
-        iob = sp_ob1%chandeg + ich - 1
-        !write (7778,*) ich, ob(iob)%name, ch_morph(ich)%w_yr, ch_morph(ich)%d_yr, ch_morph(ich)%fp_mm
-      end do
-          
       !! ave annual calibration output and reset time for next simulation
       call calsoft_ave_output
       yrs_print = time%yrs_prt

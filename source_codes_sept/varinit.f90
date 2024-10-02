@@ -99,7 +99,7 @@
         fixn = 0.
         grazn = 0.
         grazp = 0.
-        if (time%step > 1)  hhqday(j,:) = 0.
+        if (time%step > 0)  hhqday(j,:) = 0.
         inflpcp = 0.
         lyrtile = 0.
         qp_cms = 0.

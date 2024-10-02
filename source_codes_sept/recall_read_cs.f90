@@ -198,8 +198,7 @@
               if (rec_cs(i)%typ == 0) then
                 !nothing
               else
-                read (108,*,iostat=eof) jday, mo, day_mo, iyr, ob_typ, ob_name,    &
-                     (rec_cs(i)%hd_cs(istep,iyrs)%cs(ics),ics=1,cs_db%num_cs)
+                read (108,*,iostat=eof) jday, mo, day_mo, iyr, ob_typ, ob_name, (rec_cs(i)%hd_cs(istep,iyrs)%cs(ics),ics=1,cs_db%num_cs)
               end if
               if (eof < 0) exit
               select case (rec_cs(i)%typ)
@@ -245,5 +244,6 @@
       enddo
       endif
       
+
       return
       end subroutine recall_read_cs

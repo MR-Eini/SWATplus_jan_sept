@@ -84,5 +84,8 @@
         
       endif !check for rooting depth
       
+      
+
       return
-      end subroutine salt_uptake    
+      end subroutine salt_uptake
+      

@@ -33,7 +33,7 @@
       !!loop through each demand object for manure demand
       do idmd = 1, mallo(imallo)%dmd_obs
         !! check decision table for manure application
-        if (mallo(imallo)%dmd(idmd)%dtbl /= "null" .and. mallo(imallo)%dmd(idmd)%dtbl_num /= 0) then
+        if (mallo(imallo)%dmd(idmd)%dtbl /= "null" .and. mallo(imallo)%dmd(idmd)%dtbl_num /= "0") then
           j = mallo(imallo)%dmd(idmd)%ob_num
           id = mallo(imallo)%dmd(idmd)%dtbl_num
           d_tbl => dtbl_lum(id)

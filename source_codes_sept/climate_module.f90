@@ -107,7 +107,7 @@
         integer :: sgage = 0      !!  gage number for solar radiation (sim if generating) 
         integer :: hgage = 0      !!  gage number for relative humidity (sim if generating)
         integer :: wgage = 0      !!  gage number for windspeed (sim if generating)
-        integer :: petgage = 0      !!  number of pet gage files used in sim
+        integer :: wndir = 0      !!  number of wind direction gage (.dir) files used in sim
         integer :: atmodep = 0    !!  atmospheric depostion data file locator
       end type weather_codes_station
       
@@ -119,7 +119,7 @@
         character (len=50) :: sgage = ""      !!  gage name for solar radiation
         character (len=50) :: hgage = ""      !!  gage name for relative humidity
         character (len=50) :: wgage = ""      !!  gage name for windspeed
-        character (len=50) :: petgage = ""    !!  name of pet gage ?
+        character (len=50) :: wndir = ""      !!  name of wind direction gage (.dir) files used in sim
         character (len=50) :: atmodep = ""    !!  atmospheric depostion data file locator
       end type weather_codes_station_char
 
@@ -184,8 +184,7 @@
       type (climate_measured_data), dimension(:), allocatable :: tmp    
       type (climate_measured_data), dimension(:), allocatable :: slr
       type (climate_measured_data), dimension(:), allocatable :: hmd
-      type (climate_measured_data), dimension(:), allocatable :: wnd
-      type (climate_measured_data), dimension(:), allocatable :: petm
+      type (climate_measured_data), dimension(:), allocatable :: wnd 
       
       type atmospheric_deposition
         real :: nh4_rf = 1.         !! ave annual ammonia in rainfall - mg/l
@@ -216,9 +215,7 @@
       type (atmospheric_deposition_control), save :: atmodep_cont
       
       !rtb salt / rtb cs
-      character(len=1) :: salt_atmo = "n"
-      character(len=1) :: cs_atmo = "n"
-      
+      logical :: salt_atmo,cs_atmo
       type atmospheric_deposition_cs
         real :: rf                                  !! concentration in rainfall - mg/l
         real :: dry                                 !! dry deposition - kg/ha/yr
@@ -253,7 +250,6 @@
       character(len=50), dimension(:), allocatable :: slr_n
       character(len=50), dimension(:), allocatable :: hmd_n
       character(len=50), dimension(:), allocatable :: wnd_n   
-      character(len=50), dimension(:), allocatable :: atmo_n
-      character(len=50), dimension(:), allocatable :: petm_n
+      character(len=50), dimension(:), allocatable :: atmo_n       
           
       end module climate_module

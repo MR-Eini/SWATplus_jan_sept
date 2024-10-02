@@ -66,7 +66,7 @@
       integer :: isched
       integer :: ipud, ipdl
       integer :: ires,idb
-      integer :: imallo, idmd,irec, iplt, num_plts_cur
+      integer :: imallo, idmd,irec
       real :: hiad1                        !         |
       real :: biomass                      !         |
       real :: frt_kg
@@ -169,8 +169,7 @@
             if (d_tbl%act(iac)%name=='ponding') then !paddy irrigation
               hru(j)%irr_hmax = d_tbl%act(iac)%const !mm
               hru(j)%irr_hmin = d_tbl%act(iac)%const2 !mm
-              irrig(j)%applied = max(0.,d_tbl%act(iac)%const-wet_ob(j)%depth*1000.) * irrop_db(irrop)%eff * &
-                        (1. - irrop_db(irrop)%surq) !mm
+              irrig(j)%applied = max(0.,d_tbl%act(iac)%const-wet_ob(j)%depth*1000.) * irrop_db(irrop)%eff * (1. - irrop_db(irrop)%surq) !mm
               irrig(j)%runoff = max(0.,d_tbl%act(iac)%const-wet_ob(j)%depth*1000.) * irrop_db(irrop)%surq   !mm
               irrig(j)%demand = max(0.,d_tbl%act(iac)%const-wet_ob(j)%depth*1000.) * hru(j)%area_ha * 10.       ! m3 = mm * ha * 10.
             else
@@ -184,7 +183,7 @@
             select case (d_tbl%act(iac)%ob)
             case ("aqu")
               stor_m3 = aqu_d(iob)%stor * aqu_prm(iob)%area_ha * 10.
-              if (stor_m3 > irrig(j)%demand) then
+              if (stor_m3 * 10. > irrig(j)%demand) then
                 rto = irrig(j)%demand / stor_m3                 ! ratio of water removed from aquifer volume (m3)
               else
                 rto = 0.
@@ -672,7 +671,7 @@
                                    
           ! set the amount of water to be diverted
           case ("divert") 
-            ! ob_num is set in wallo_demand
+            ! ob_num is set in wallo_control
             select case (d_tbl%act(iac)%option)
                 
             case ("flo_cms")    !! flow diversion demand to m3
@@ -705,25 +704,7 @@
               end select
                 
             end select
-                            
-          ! set the demand from a reservoir
-          case ("res_demand") 
-            j = d_tbl%act(iac)%ob_num
-            if (j == 0) j = ob_cur
-            
-            select case (d_tbl%act(iac)%option)
-            !! demand is to fill to principal spillway
-            case ("storage")
-              if (d_tbl%act(iac)%file_pointer == "pvol") then
-                dmd_m3 = d_tbl%act(iac)%const * res_ob(j)%pvol - res(j)%flo
-                dmd_m3 = Max (0., dmd_m3)
-              end if
-              if (d_tbl%act(iac)%file_pointer == "evol") then
-                dmd_m3 = d_tbl%act(iac)%const * res_ob(j)%evol - res(j)%flo
-                dmd_m3 = Max (0., dmd_m3)
-              end if
-            end select
-                                                                        
+                                       
           !flow control for water allocation - needs to be modified***
           case ("flow_control") !! set flow fractions in con file
             ! ob_num is the object number of the current channel
@@ -882,48 +863,22 @@
           case ("lu_change")
             j = d_tbl%act(iac)%ob_num
             if (j == 0) j = ob_cur
-            if (d_tbl%lu_chg_mx(iac) <= Int(d_tbl%act(iac)%const2)) then
-              d_tbl%lu_chg_mx(iac) = d_tbl%lu_chg_mx(iac) + 1
-              ilu = d_tbl%act_typ(iac)
-              hru(j)%land_use_mgt = ilu
-              hru(j)%dbs%land_use_mgt = ilu
-              lu_prev = hru(j)%land_use_mgt_c
-              hru(j)%land_use_mgt_c = d_tbl%act(iac)%file_pointer
-              isol = hru(j)%dbs%soil
-              call hru_lum_init (j)
-              call plant_init (1,j)     ! (1) is to deallocate and reset
-              call cn2_init (j)
-              !! reset composite usle value - in hydro_init
-              rock = Exp(-.053 * soil(j)%phys(1)%rock)
-              hru(j)%lumv%usle_mult = rock * soil(j)%ly(1)%usle_k *                        &
-                                       hru(j)%lumv%usle_p * hru(j)%lumv%usle_ls * 11.8
-              !! write to new landuse change file
-              write (3612,*) j, time%yrc, time%mo, time%day_mo,  "    LU_CHANGE ",           &
-                                           lu_prev, hru(j)%land_use_mgt_c, "   0   0"
-            
-              !! add new plants in simulation for yield output
-              do ipl = 1, pcom(j)%npl
-                if (basin_plants == 0) then
-                  plts_bsn(1) = pcom(j)%pl(ipl)
-                  basin_plants = 1
-                else
-                  num_plts_cur = basin_plants
-                  do iplt = 1, num_plts_cur
-                    if (pcom(j)%pl(ipl) == plts_bsn(iplt)) exit
-                    if (iplt == basin_plants) then
-                      plts_bsn(iplt+1) = pcom(j)%pl(ipl)
-                      bsn_crop_yld(iplt+1) = bsn_crop_yld_z
-                      bsn_crop_yld_aa(iplt+1) = bsn_crop_yld_z
-                      basin_plants = basin_plants + 1
-                      pcom(j)%plcur(ipl)%bsn_num = basin_plants
-                    end if
-                  end do
-                end if
-              end do
-
-              !pcom(j)%dtbl(idtbl)%num_actions(iac) = pcom(j)%dtbl(idtbl)%num_actions(iac) + 1
-            end if
-            
+            ilu = d_tbl%act_typ(iac)
+            hru(j)%dbs%land_use_mgt = ilu
+            lu_prev = hru(j)%land_use_mgt_c
+            hru(j)%land_use_mgt_c = d_tbl%act(iac)%file_pointer
+            isol = hru(j)%dbs%soil
+            call hru_lum_init (j)
+            call plant_init (1,j)     ! (1) is to deallocate and reset
+            call cn2_init (j)
+            !! reset composite usle value - in hydro_init
+            rock = Exp(-.053 * soil(j)%phys(1)%rock)
+            hru(j)%lumv%usle_mult = rock * soil(j)%ly(1)%usle_k *       &
+                                 hru(j)%lumv%usle_p * hru(j)%lumv%usle_ls * 11.8
+            !! write to new landuse change file
+            write (3612,*) j, time%yrc, time%mo, time%day_mo,  "    LU_CHANGE ",        &
+                    lu_prev, hru(j)%land_use_mgt_c, "   0   0"
+                            
           !land use change - contouring
           case ("p_factor")
             j = d_tbl%act(iac)%ob_num

@@ -33,7 +33,7 @@
       precip_eff = precip_eff + ls_overq
       
       !! add surface runon to subdaily effective precip
-      if (time%step > 1) then
+      if (time%step > 0) then
           w%ts(:) = w%ts(:) + ls_overq / time%step
       end if
       

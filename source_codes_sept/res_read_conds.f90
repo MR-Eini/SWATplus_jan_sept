@@ -7,9 +7,8 @@
       
       character (len=80) :: title
       integer :: max_table, tnum_conds, ii, ictbl, isub_con, icc, imod
-      integer ::  eof
-      logical :: i_exist         !                |check to determine if file exists
-   
+      integer :: i_exist, eof
+      
       inquire (file="res_conds.dat", exist=i_exist)
       if (.not. i_exist) return
       open (100,file="res_conds.dat")
@@ -48,7 +47,7 @@
             read (100,*) isub_con
             backspace (100)
             allocate (ctbl(ictbl)%mods(imod)%con(ii)%scon(isub_con)) 
-            read (100,*) ctbl(ictbl)%mods(imod)%con(ii)%num_conds, (ctbl(ictbl)%mods(imod)%con(ii)%scon(icc), icc = 1, isub_con),  &
+            read (100,*) ctbl(ictbl)%mods(imod)%con(ii)%num_conds, (ctbl(ictbl)%mods(imod)%con(ii)%scon(icc), icc = 1, isub_con),    &
                 ctbl(ictbl)%mods(imod)%con(ii)%action
           end do
         end do

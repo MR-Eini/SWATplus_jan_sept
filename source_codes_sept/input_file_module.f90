@@ -25,8 +25,7 @@
       type input_cli
        character(len=25) :: weat_sta = "weather-sta.cli"
        character(len=25) :: weat_wgn = "weather-wgn.cli"
-       character(len=25) :: pet_cli = "pet.cli"
-       !character(len=25) :: wind_dir = "wind-dir.cli"
+       character(len=25) :: wind_dir = "wind-dir.cli"
        character(len=25) :: pcp_cli = "pcp.cli"
        character(len=25) :: tmp_cli = "tmp.cli"
        character(len=25) :: slr_cli = "slr.cli"
@@ -301,11 +300,6 @@
         character(len=80) :: wnd = " "  
       end type input_path_wnd
       type (input_path_wnd) :: in_path_wnd
-      
-    type input_path_pet
-        character(len=80) :: peti = " "  
-      end type input_path_pet
-      type (input_path_pet) :: in_path_pet
       
       contains
 

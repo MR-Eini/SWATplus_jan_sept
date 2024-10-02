@@ -4,13 +4,11 @@
       use input_file_module
       use maximum_data_module
       use salt_data_module
-      
-      implicit none
  
       character (len=80) :: titldum
       character (len=80) :: header
       character (len=12) :: plant_name
-      integer :: isalt,iplant
+      integer :: isalt
       logical :: i_exist              !none       |check to determine if file exists
 
 
@@ -46,6 +44,7 @@
         close(107)
 
       endif
- 
+
+      
       return
       end subroutine salt_plant_read

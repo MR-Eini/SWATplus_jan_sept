@@ -11,7 +11,7 @@
       
       implicit none
 
-      integer, intent (in) :: chan_id    !       |channel number
+      integer, intent (in) :: chan_id		 !       |channel number
       integer :: k                       !       |counter
       integer :: s                       !       |solute counter
       integer :: cell_id                 !       |cell in connection with the channel
@@ -22,7 +22,7 @@
       real :: chan_depth                 !m      |channel depth
       real :: chan_width                 !m      |channel width
       real :: chan_length                !m      |length of channel, in cell
-      real :: bed_elev                   !m      |elevation of channel bed, in cell
+      real :: bed_elev									 !m      |elevation of channel bed, in cell
       real :: bed_K                      !m/day  |hydraulic conductivity of channel bed, in cell
       real :: bed_thick                  !m      |thickness of channel bed, in cell
       real :: chan_stage                 !m      |elevation of water in channel, in cell
@@ -53,10 +53,10 @@
         
           !characteristics of cell
           chan_length = gw_chan_info(chan_id)%leng(k)
-          bed_elev = gw_chan_info(chan_id)%elev(k) - gw_bed_change
+          bed_elev = gw_chan_info(chan_id)%elev(k)
           bed_K = gw_chan_info(chan_id)%hydc(k)
           bed_thick = gw_chan_info(chan_id)%thck(k)
-          
+        
           !derived values
           chan_stage = bed_elev + chan_depth !stage of water in channel (m)
           flow_area = chan_width * chan_length !water exchange flow area (m2)
@@ -78,10 +78,8 @@
           
           !store values in gwflow source/sink arrays
           if(Q < 0) then !aquifer --> channel
-            !if ((Q*-1 == 1) >= gw_state(cell_id)%stor) then !can only remove what is there
-            if (-Q  >= gw_state(cell_id)%stor) then !can only remove what is there
-              !Q = gw_state(cell_id)%stor * (-1)
-              Q = -gw_state(cell_id)%stor
+            if((Q*-1) >= gw_state(cell_id)%stor) then !can only remove what is there
+              Q = gw_state(cell_id)%stor * (-1)
             endif
             gw_ss(cell_id)%gwsw = gw_ss(cell_id)%gwsw + Q
             gw_state(cell_id)%stor = gw_state(cell_id)%stor + Q !update available groundwater in the cell
@@ -97,7 +95,7 @@
           ch_stor(chan_id)%flo = ch_stor(chan_id)%flo + (Q*(-1))
           
           !calculate solute mass (g/day) transported between cell and channel
-          if (gw_solute_flag == 1) then
+          if(gw_solute_flag) then
             chan_csol = 0.
             solmass = 0.
             if(Q < 0) then !mass leaving the cell (aquifer --> channel)
@@ -114,14 +112,14 @@
               ch_stor(chan_id)%solp = ch_stor(chan_id)%solp + (solmass(2)*(-1)/1000.) !kg
               sol_index = 2
               !salts
-              if (gwsol_salt == 1) then
+              if(gwsol_salt) then
                 do isalt=1,cs_db%num_salts
                   sol_index = sol_index + 1
                   ch_water(chan_id)%salt(isalt) = ch_water(chan_id)%salt(isalt) + (solmass(sol_index)*(-1)/1000.) !kg   
                 enddo
               endif
               !constituents
-              if (gwsol_cons == 1) then
+              if(gwsol_cons) then
                 do ics=1,cs_db%num_cs
                   sol_index = sol_index + 1
                   ch_water(chan_id)%cs(ics) = ch_water(chan_id)%cs(ics) + (solmass(sol_index)*(-1)/1000.) !kg  
@@ -134,14 +132,14 @@
                 chan_csol(2) = (ch_stor(chan_id)%solp * 1000.) / chan_volume !p g/m3 in channel  
                 sol_index = 2
                 !salts
-                if (gwsol_salt == 1) then
+                if(gwsol_salt) then
                   do isalt=1,cs_db%num_salts
                     sol_index = sol_index + 1
                     chan_csol(sol_index) = (ch_water(chan_id)%salt(isalt)*1000.) / chan_volume !g/m3 in channel water        
                   enddo
                 endif
                 !constituents
-                if (gwsol_cons == 1) then
+                if(gwsol_cons) then
                   do ics=1,cs_db%num_cs
                     sol_index = sol_index + 1
                     chan_csol(sol_index) = (ch_water(chan_id)%cs(ics)*1000.) / chan_volume !g/m3 in channel water
@@ -168,7 +166,7 @@
               ch_stor(chan_id)%solp = ch_stor(chan_id)%solp - (solmass(2)/1000.) !kg
               sol_index = 2
               !salts
-              if (gwsol_salt == 1) then
+              if(gwsol_salt) then
                 do isalt=1,cs_db%num_salts
                   sol_index = sol_index + 1
                   if((solmass(sol_index)/1000.) > ch_water(chan_id)%salt(isalt)) then
@@ -178,7 +176,7 @@
                 enddo
               endif
               !constituents
-              if (gwsol_cons == 1) then
+              if(gwsol_cons) then
                 do ics=1,cs_db%num_cs
                   sol_index = sol_index + 1
                   if((solmass(sol_index)/1000.) > ch_water(chan_id)%cs(ics)) then
@@ -199,6 +197,10 @@
         endif !check if cell is active
       
       enddo !go to next cell 
-          
+      
+      
       return
-      end subroutine gwflow_gwsw      
+      end subroutine gwflow_gwsw
+      
+           
+      

@@ -48,46 +48,46 @@
 
       if (pcom(j)%lai_sum < 0.001 .or. pcom(j)%laimx_sum < 0.001) return
 
-      if (time%step > 1) then
-        canstori = canstor(j)
-        canmxl = hru(j)%hyd%canmx * pcom(j)%lai_sum / pcom(j)%laimx_sum
-        do ii = 1, time%step
-          xx = w%ts(ii)
-          w%ts(ii) = w%ts(ii) - (canmxl - canstor(j))
-
-          if (w%ts(ii) < 0.) then
-            canstor(j) = canstor(j) + xx
-            w%ts(ii) = 0.
-          else
-            canstor(j) = canmxl
-          endif
-        end do
-        if (canstor(j) > canstori) then
+      if (time%step > 0) then
+          canstori = canstor(j)
+          canmxl = hru(j)%hyd%canmx * pcom(j)%lai_sum / pcom(j)%laimx_sum
           do ii = 1, time%step
-            xx = 0.
-            xx = wst(iwst)%weat%ts(ii)
-            w%ts(ii) = w%ts(ii) - (canstor(j) - canstori)
+            xx = w%ts(ii)
+            w%ts(ii) = w%ts(ii) - (canmxl - canstor(j))
 
             if (w%ts(ii) < 0.) then
-              canstori = canstori + xx
+              canstor(j) = canstor(j) + xx
               w%ts(ii) = 0.
             else
-              canstori = canstor(j)
+              canstor(j) = canmxl
             endif
           end do
-        end if
+          if (canstor(j) > canstori) then
+            do ii = 1, time%step
+              xx = 0.
+              xx = wst(iwst)%weat%ts(ii)
+              w%ts(ii) = w%ts(ii) - (canstor(j) - canstori)
 
-      else
-        canmxl = hru(j)%hyd%canmx * pcom(j)%lai_sum / pcom(j)%laimx_sum
-        !! check if precip_eff is less than remaining canopy storage
-        if (precip_eff < canmxl - canstor(j)) then
-          canstor(j) = canstor(j) + precip_eff
-          precip_eff = 0.
+              if (w%ts(ii) < 0.) then
+                canstori = canstori + xx
+                w%ts(ii) = 0.
+              else
+                canstori = canstor(j)
+              endif
+            end do
+          end if
+
         else
-          precip_eff = precip_eff - (canmxl - canstor(j))
-          canstor(j) = canmxl
-        endif
-    end if     ! time%step > 1
+          canmxl = hru(j)%hyd%canmx * pcom(j)%lai_sum / pcom(j)%laimx_sum
+          !! check if precip_eff is less than remaining canopy storage
+          if (precip_eff < canmxl - canstor(j)) then
+            canstor(j) = canstor(j) + precip_eff
+            precip_eff = 0.
+          else
+            precip_eff = precip_eff - (canmxl - canstor(j))
+            canstor(j) = canmxl
+          endif
+       end if
 
-    return
-    end subroutine sq_canopyint
+      return
+      end subroutine sq_canopyint

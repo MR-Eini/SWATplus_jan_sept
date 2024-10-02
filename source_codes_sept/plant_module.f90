@@ -10,7 +10,6 @@
          real :: plet = 0.              !! mm H2O           |actual ET simulated during life of plant
          real :: plpet = 0.             !! mm H2O           |potential ET simulated during life of plant
          real :: laimxfr = 0.           !! 
-         real :: laimxfr_p = 0.         !! 
          real :: hi_adj = 0.            !! (kg/ha)/(kg/ha)  |temperature adjusted harvest index for current time during growing season
          real :: hi_prev = 0.           !! (kg/ha)/(kg/ha)  |optimal harvest index for current time during growing season
          real :: olai = 0.              !!                  |leaf area index (0-1) when leaf area decline begins
@@ -44,13 +43,12 @@
         character(len=1) :: gro = "y"   !               |land cover status; 'n' = no land cover growing; 'y' = land cover growing
         character(len=1) :: idorm = "n" !! none         |dormancy status; 'n'=land cover growing; 'y'=land cover dormant
         character(len=1) :: mseas = "n" !! none         |monsoon status;  'n'= not in monsoon season; 'y'= in monsoon season
-        real :: phumat = 0.             !! C            |heat units to maturity - annual
-        real :: phumat_p = 0.           !! C            |heat units to maturity for perennials
-        real :: phuacc = 0.             !! fraction     |fraction of plant heat unit accumulated
-        real :: phuacc_p = 0.           !! fraction     |fraction of perennial plant heat unit accumulated
+        real :: phumat = 0.             !! C            |heat units to maturity
+        real :: phuacc = 0.             !! fraction     |fraction of plant heatunit accumulated
         integer :: harv_num = 0         !!              |number of harvest operations for entire simulation
         integer :: harv_num_yr = 0      !!              |number of harvest operations each year
-        integer :: curyr_mat = 1        !!
+        integer :: curyr_mat = 1        !! 
+        integer :: curyr_gro = 1        !!
         real :: pop_com = 0.            !! none
         integer :: days_senes = 0.      !! mm           |days since scenesence began (for moisture growth perennials)
         real :: leaf_tov = 0.           !! none         |leaf turnover rate - decline in lai and leaf biomass
@@ -58,7 +56,6 @@
         real :: harv_idx = 0.           !! fraction     |harvest index - grain fraction of above ground plant mass
         real :: pest_stress = 0.        !! fraction     |pest (insect, disease) stress on harvest index
         real :: epco = 0.               !! fraction     |water uptake compensation factor for each plant
-        real, dimension(:), allocatable :: uptake       !! mm   |water uptake by layer 
       end type plant_status
       
       type plant_stress
@@ -103,7 +100,7 @@
       type plant_community
        character(len=35) :: name
        integer :: npl                   !! number of plants in community
-       character(len=16), dimension(:), allocatable :: pl       !! N/A              |plant name
+       character(len=4), dimension(:), allocatable :: pl       !! N/A              |plant name
        integer :: pcomdb                !! current plant community database number
        integer :: rot_yr = 1            !! rotation year
        integer :: days_plant = 0        !!               |days since last planting - for conditional scheduling planting

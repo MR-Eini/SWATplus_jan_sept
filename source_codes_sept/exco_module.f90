@@ -1,6 +1,4 @@
       module exco_module
-    
-      implicit none
           
       integer, dimension(:), allocatable :: exco_om_num
       integer, dimension(:), allocatable :: exco_pest_num

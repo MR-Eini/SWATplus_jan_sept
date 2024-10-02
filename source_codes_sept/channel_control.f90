@@ -129,7 +129,6 @@
         ben_area = ch_hyd(jhyd)%l *ch_hyd(jhyd)%w 
         
 !        if (cs_db%num_pests > 0) then
-
 !          call ch_rtpest 
 !        end if
         

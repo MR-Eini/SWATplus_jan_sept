@@ -181,7 +181,7 @@
         !! compute evaporation from ponded water
         wet_wat_d(j)%evap = 0.
         if (wet(j)%flo > 0.) then
-          wetvol_mm = wet(j)%flo / (10. *  hru(j)%area_ha)    !mm=m3/(10.*ha)
+          wetvol_mm = wet(j)%flo / (10. *  hru(j)%area_ha)    !mm*ha*10.=m3
           !! take all soil evap from wetland storage before taking from soil
           if (wetvol_mm >= esleft) then
             wetvol_mm = wetvol_mm - esleft

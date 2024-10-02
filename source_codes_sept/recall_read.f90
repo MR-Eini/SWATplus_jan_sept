@@ -33,7 +33,6 @@
       integer :: iexco_om
       integer :: iexo_allo = 0
       integer :: idaystep
-      integer :: jday1, mo1, iyr1
       
       eof = 0
       imax = 0
@@ -88,55 +87,71 @@
         select case (recall(i)%typ)
             
         case (0) !! subdaily
-            allocate (recall(i)%hyd_flo(time%step*366,time%nbyr))
-            allocate (recall(i)%hd(366,time%nbyr))
+            allocate (recall(i)%hyd_flo(time%step*366,nbyr))
+            allocate (recall(i)%hd(366,nbyr))
             
           case (1) !! daily
-            allocate (recall(i)%hd(366,time%nbyr))
+            allocate (recall(i)%hd(366,nbyr))
             
           case (2) !! monthly
-            allocate (recall(i)%hd(12,time%nbyr))
+            allocate (recall(i)%hd(12,nbyr))
             
           case (3) !! annual
-            allocate (recall(i)%hd(1,time%nbyr))
+            allocate (recall(i)%hd(1,nbyr))
 
-          end select 
-        
-        !! save starting year of recall data
-        read (108,*,iostat=eof) jday, mo, day_mo, iyr
-        recall(i)%start_yr = iyr
-        backspace (108)
-        
-        !! set start year if recall starts before start of simulation
-        if (recall(i)%start_yr <= time%yrc) then
-          iyrs = 1
-          do
-            read (108,*,iostat=eof) jday, mo, day_mo, iyr
-            if (iyr == time%yrc)  then
-              exit
-            end if
-          end do
-          backspace (108)
-        else
-          !! seet star year if recall starts after start of  simulation
-          iyrs = recall(i)%start_yr - time%yrc + 1
-        end if
-        
-        !! read and store data
+        end select 
+           
+        !! find data end time
         do 
-          iyr1 = iyr
-          read (108,*,iostat=eof) jday1, mo1, day_mo, iyr
+          read (108,*,iostat=eof) jday, mo, day_mo, iyr
           if (eof < 0) exit
-          if (iyr > time%yrc_end) exit
-          backspace (108)
+        
+        rewind (108)
+        read (108,*,iostat=eof) titldum
+        if (eof < 0) exit
+        read (108,*,iostat=eof) nbyr
+        recall(i)%end_yr = iyr + nbyr - 1
+        if (eof < 0) exit
+        read (108,*,iostat=eof) header
+        if (eof < 0) exit 
+       
+        !! find data at start of simulation
+        do 
+          read (108,*,iostat=eof) jday, mo, day_mo, iyr
+          if (eof < 0) exit
+          if (iyr == time%yrc) then
+            recall(i)%start_yr = iyr
+            select case (recall(i)%typ)
+              case (0) !! subdaily
+                istep = (jday - 1) * time%step + 1
+                idaystep = jday
+              case (1) !! daily
+                istep = jday
+              case (2) !! monthly
+                istep = mo
+              case (3) !! annual
+                istep = 1
+            end select
+            exit
+          if (eof < 0) exit
+          end if
+        end do
+        
+        backspace (108)
+        iyr_prev = iyr
+        iyrs = 1
+       
+        do
+          iyr_prev = iyr
+          if (recall(i)%typ == 0) then
+            !! don't store subdaily (ht1) - sum to get daily to save
+            read (108,*,iostat=eof) jday, mo, day_mo, iyr, ob_typ, ob_name, ht1
+          else
+            read (108,*,iostat=eof) jday, mo, day_mo, iyr, ob_typ, ob_name, recall(i)%hd(istep,iyrs)
+          end if
+          if (eof < 0) exit
           
-            !! increment iyrs (sequential year of recall data) if next year
-            if (iyr1 /= iyr) then
-              iyrs = iyrs + 1
-            end if
-            iyr1 = iyr
-          
-          !! read data for each time step
+          !check to set next year
           select case (recall(i)%typ)
             case (0) !! subdaily
                  
@@ -146,32 +161,56 @@
               !! reset daily step and sum the daily hyd
               if (istep > idaystep * time%step) then
                 !! convert daily flow m3/s -> m3 -- other subdaily inputs are in t and kg
-                !recall(i)%hd(idaystep,iyrs)%flo = recall(i)%hd(idaystep,iyrs)%flo * 86400. / time%step
+                recall(i)%hd(idaystep,iyrs)%flo = recall(i)%hd(idaystep,iyrs)%flo * 86400. / time%step
                 idaystep = idaystep + 1
                 recall(i)%hd(idaystep,iyrs) = recall(i)%hd(idaystep,iyrs) + ht1
               else
                 recall(i)%hd(idaystep,iyrs) = recall(i)%hd(idaystep,iyrs) + ht1
               end if
            
+              !! increment subdaily time step
+              istep = istep + 1
+              
+              !! reset year, day, and subday at end of year
+              if (jday == 365 .or. jday == 366) then
+                read (108,*,iostat=eof) jday, mo, day_mo, iyr
+                if (eof < 0) exit
+                backspace (108)
+                if (iyr /= iyr_prev) then
+                  iyr_prev = iyr
+                  iyrs = iyrs + 1
+                  istep = 1
+                  idaystep = 1
+                end if
+              end if
+              
             case (1) !! daily
-              read (108,*,iostat=eof) jday, mo, day_mo, iyr, ob_typ, ob_name,    &
-                                                      recall(i)%hd(jday1,iyrs)
-            case (2) !! monthly
-              read (108,*,iostat=eof) jday, mo, day_mo, iyr, ob_typ, ob_name,    &
-                                                      recall(i)%hd(mo1,iyrs)
-              write (10108,*) jday, mo, day_mo, iyr, ob_typ, ob_name,    &
-                                                      recall(i)%hd(mo1,iyrs)
-            case (3) !! annual
-              read (108,*,iostat=eof) jday, mo, day_mo, iyr, ob_typ, ob_name, ht1
-              recall(i)%hd(1,iyrs) = ht1
-            end select
+              istep = istep + 1
+              if (jday == 365 .or. jday == 366) then
+                read (108,*,iostat=eof) jday, mo, day_mo, iyr
+                if (eof < 0) exit
+                backspace (108)
+                if (iyr /= iyr_prev) then
+                  iyr_prev = iyr
+                  iyrs = iyrs + 1
+                  istep = 1
+                end if
+             end if
             
-        end do
-        
-        !! save end year of recall data
-        recall(i)%end_yr = iyr
-        close (108)
-          
+            case (2) !! monthly
+              istep = istep + 1
+              if (mo == 12) then
+                iyrs = iyrs + 1
+                istep = 1
+              end if
+            
+            case (3) !! annual
+              iyrs = iyrs + 1
+
+         end select
+         end do
+       end do   
+         close (108)
       else
           
      if (recall(i)%typ == 4) then

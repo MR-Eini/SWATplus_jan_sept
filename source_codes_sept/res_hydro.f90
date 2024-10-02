@@ -21,32 +21,23 @@
       integer :: tstep            !none      |hru number
       integer :: iac              !none      |counter 
       integer :: ic              !none      |counter
-      !integer :: weir_flg=0        !none      |counter
       integer,  intent (in) :: id               !none      |hru number
       integer :: ial              !none      |counter
       integer :: irel             !          |
       integer :: iob              !none      |hru or wro number
-      real :: vol,vol_above                 !          |
+      real :: vol                 !          |
       real :: b_lo                !          |
       character(len=1) :: action  !          |
       real :: res_h               !m         |water depth
       real :: demand              !m3        |irrigation demand by hru or wro
       real :: wsa1                !m2        |water surface area 
-      real :: qout                !m3        |weir discharge during short time step
-      real :: hgt                 !m         |height of bottom of weir above bottom of impoundment
       real :: hgt_above           !m         |height of water above the above bottom of weir
-      real :: sto_max             !m3        |maximum storage volume at the bank top
+      
       !! store initial values
       vol = wbody%flo
       nstep = 1
       wsa1 = wbody_wb%area_ha * 10000. !m2
- 
-      if (time%step>0) then  !Jaehak 2024
-	    nstep = time%step
-	  else
-	    nstep = 1
-	  end if
-	  
+      
       do tstep = 1, nstep
 
         !calc release from decision table
@@ -98,9 +89,7 @@
               end select
               ht2%flo = ht2%flo + (wbody%flo - b_lo) / d_tbl%act(iac)%const / nstep
               ht2%flo = max(0.,ht2%flo)
-              !wbody%flo = max(0.,wbody%flo - ht2%flo)
-              vol = wbody%flo
-             
+              
             case ("dyrt")
               !! release based on drawdown days + percentage of principal volume
               select case (dtbl_res(id)%act(iac)%file_pointer)
@@ -167,33 +156,8 @@
                  
             case ("weir")
               !! release based on weir equation
-              iweir = d_tbl%act_typ(iac)
-              res_h = vol / wsa1     !m
+              res_h = vol / (wbody_wb%area_ha * 10000.)     !m
               hgt_above = max(0., res_h - wet_ob(jres)%weir_hgt)    !m
-              if (nstep>24) then !hourly interval
-                ht2%flo = res_weir(iweir)%c * res_weir(iweir)%w * hgt_above ** res_weir(iweir)%k !m3/s
-                ht2%flo = max(0.,86400. / nstep * ht2%flo) !m3
-                vol = vol - ht2%flo
-              else
-                do ic = 1, 24
-                  vol_above = hgt_above * wsa1 !m3 water volume above weir height
-                  qout = res_weir(iweir)%c * res_weir(iweir)%w * hgt_above ** res_weir(iweir)%k !m3/s
-                  qout = 3600. * qout !m3
-                  if (qout > vol_above) then
-                    ht2%flo = ht2%flo + vol_above !weir discharge volume for the day, m3
-                    vol = vol - vol_above
-                  else
-                    ht2%flo = ht2%flo + qout 
-                    vol = vol - qout
-                  end if
-                  res_h = vol / wsa1 !m
-                  hgt_above = max(0.,res_h - wet_ob(jres)%weir_hgt)  !m Jaehak 2022
-                  if (vol_above<=0.001.or.hgt_above<=0.0001) exit
-                end do
-
-              endif
-              res_h = vol / wsa1 !m
-              wbody%flo = vol !m3
               iweir = d_tbl%act_typ(iac)
               ht2%flo = ht2%flo + res_weir(iweir)%c * res_weir(iweir)%w * hgt_above ** res_weir(iweir)%k / nstep   !m3/s
               ht2%flo = ht2%flo + max(0.,ht2%flo)
@@ -212,9 +176,8 @@
               ht2%flo = max(0.,ht2%flo)
               
             end select
-          
-          end if    ! if action hit
-          
+          end if    ! if action hit 
+            
         end do      ! iac - actions loop
       end do    !tstep loop
 

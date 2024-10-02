@@ -94,8 +94,6 @@
                ob_out(i)%hydno = 8
             case ("plt")  !plants status  
                ob_out(i)%hydno = 9
-            case ("ch_fp")  !channel and flood plain water balance  
-               ob_out(i)%hydno = 10
             end select
          iunit = ob_out(i)%unitno
          
@@ -111,8 +109,6 @@
            write (iunit+i,*) hyd_hdr_time, sol_hdr
          case (9)
            write (iunit+i, '(1X4A,16(4XA),2A,14(4XA))') hyd_hdr_time, plt_hdr, plt_hdr
-         case (10)
-           write (iunit+i,*) hyd_hdr_time, fp_hdr
          end select
          
         end do  ! mobj_out  

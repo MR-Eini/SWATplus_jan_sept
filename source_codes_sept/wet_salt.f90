@@ -92,6 +92,7 @@
         wtspsalt(ihru,isalt) = seep_mass
           
       enddo !go to next salt ion
-     
+      
+      
       return
       end subroutine wet_salt

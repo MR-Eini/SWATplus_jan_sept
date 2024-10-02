@@ -30,7 +30,7 @@
       
       
       !check LSU-cell connection
-      if (lsu_cells_link == 1) then 
+      if(lsu_cells_link) then 
       
         !loop through the landscape units
         do k=1,db_mx%lsu_out
@@ -116,5 +116,7 @@
       
       endif !check for LSU-cell connection
       
+      
       return
-      end subroutine gwflow_gwet 
+      end subroutine gwflow_gwet
+      

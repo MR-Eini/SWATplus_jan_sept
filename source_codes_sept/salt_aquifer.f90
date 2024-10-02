@@ -1,7 +1,6 @@
       module salt_aquifer
 
-      implicit none
-    
+
       real :: testing_aquifer
       
       type salt_balance_aqu
@@ -100,4 +99,10 @@
       end type output_salt_header      
       type (output_salt_header) :: salt_hdr_aqu
       
-      end module     
+      
+      end module
+      
+      
+		
+      
+      

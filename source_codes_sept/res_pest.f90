@@ -194,14 +194,11 @@
         !! update concentration of pesticide in lake water and sediment
         if (tpest1 < 1.e-10) tpest1 = 0.0
         if (tpest2 < 1.e-10) tpest2 = 0.0
-        res_water(jres)%pest(ipst) = tpest1
-        res_benthic(jres)%pest(ipst) = tpest2
-        
-        !! set outgoing pesticide for routing
-        hcs2%pest(ipst) = solpesto + sorpesto
+        res_water(jres)%pest(ipst) = tpest1 / res(jres)%flo
+        res_benthic(jres)%pest(ipst) = tpest2 / bedvol
 
-      end do    ! ipst = 1, cs_db%num_pests
-      end if    ! res(jres)%flo > 1.
+      end do
+      end if
 
       return
       end subroutine res_pest

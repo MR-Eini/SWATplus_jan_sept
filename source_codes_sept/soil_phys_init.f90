@@ -181,8 +181,10 @@
       sol(isol)%s%avbd = 2.65 * (1. - sol(isol)%s%avpor)
 
 !!    calculate infiltration parameters for subdaily time step
-      if (time%step > 1) then
-        sol(isol)%phys(1)%sand = 100. - sol(isol)%phys(1)%clay - sol(isol)%phys(1)%silt
+      if (time%step > 0) then
+        sol(isol)%phys(1)%sand = 100. - sol(isol)%phys(1)%clay -     &
+                                    sol(isol)%phys(1)%silt
+        
       end if
 
       return

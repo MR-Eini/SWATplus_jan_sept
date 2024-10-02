@@ -26,10 +26,9 @@
       character(len=13) :: gwflow_hdr_yr(18)
       character(len=13) :: gwflow_hdr_aa(18)
       character(len=13) :: gwflow_hdr_huc12(16)
-      character(len=13) :: gwflow_hdr_huc12_mo(18)
-      character(len=13) :: sol_hdr_day(24)
-      character(len=13) :: sol_hdr_yr(20)
-      character(len=13) :: sol_hdr_aa(20)
+      character(len=13) :: sol_hdr_day(22)
+      character(len=13) :: sol_hdr_yr(18)
+      character(len=13) :: sol_hdr_aa(18)
       character(len=16) :: hydsep_hdr(10)
       !general variables
       character(len=13) :: header
@@ -42,7 +41,6 @@
       integer :: i                    !          |
       integer :: j                    !          |
       integer :: k                    !          |
-      integer :: m                    !          |
       integer :: n                    !          |
       integer :: s                    !          |
       integer :: count                !          |
@@ -51,7 +49,6 @@
       integer :: channel              !          |
       integer :: chan_cell            !          |
       integer :: ob_num               !          |
-      integer :: active_cell          !          |
       real :: cell_size               !          |size of cells in structured grid
       real :: x_coord                 !          |variable to track x coordinate of cell in structured grid
       real :: y_coord                 !          |variable to track y coordinate of cell in structured grid
@@ -69,7 +66,6 @@
       integer :: in_huc_cell          !          |
       integer :: in_res_cell          !          |
       integer :: in_canal_cell        !          |
-      integer :: in_gw_minl           !          |
       !aquifer and streambed properties
       integer :: K_zone               !          |
       integer :: Sy_zone              !          |
@@ -81,8 +77,8 @@
       real, dimension (:), allocatable :: zones_aquSy
       real, dimension (:), allocatable :: zones_strK
       real, dimension (:), allocatable :: zones_strbed
-      !external pumping information
-      integer :: pumpex_cell
+      !recharge information
+      real, dimension (:), allocatable :: delay
       !reservoir information
       integer :: res_cell             !          |
       integer :: res_id               !          |
@@ -91,9 +87,9 @@
       integer :: canal_out(5000)      !          |flag (0,1) indicating if canal receives water from outside the model domain
       integer :: day_beg              !          |beginning day (of year)  of active canals
       integer :: day_end              !          |ending day (of year) of active canals
-      integer :: canal     !          |id of canal that intersects grid cells
-      real :: thick                   !m         | |thickness of canal bed sediments
-      real :: depth                   !m         |depth of canal water
+      integer :: canal							  !          |id of canal that intersects grid cells
+      real :: thick                   !m				 |thickness of canal bed sediments
+      real :: depth										!m         |depth of canal water
       real :: width                   !m         |width of canal
       real :: length                  !m         |length of canal in cell
       real :: stage                   !m         |stage of canal
@@ -153,12 +149,19 @@
       in_canal_cell = 1237
       in_hru_pump_obs = 1238
       in_lsu_cell = 1229
-      in_gw_minl = 1220
       
       !number of HRUs in the simulation
       num_hru = sp_ob%hru
-
-     
+      
+      !calculate watershed domain area (m2) (used for connecting HRUs to grid cells, and for water balance calculations)
+      ob_num = sp_ob1%hru  !object number of first HRU
+      watershed_area = 0.
+      do i=1,num_hru
+        watershed_area = watershed_area + (ob(i)%area_ha * 10000.) !m2
+        ob_num = ob_num + 1
+      enddo
+      
+      
       !read in gwflow module information from gwflow.input --------------------------------------------------------------------------------
       open(in_gw,file='gwflow.input')
       read(in_gw,*) header
@@ -167,10 +170,10 @@
       !basic information
       write(out_gw,*) '     reading basic information...'
       read(in_gw,*) grid_type                       !structured or unstructured
-      if (grid_type == "structured") then
+      if(grid_type == "structured") then
         read(in_gw,*) cell_size                     !area (m2) of each grid cell
         read(in_gw,*) grid_nrow,grid_ncol           !number of rows and columns in the gwflow grid
-      else if (grid_type == "unstructured") then
+      elseif(grid_type == "unstructured") then
         read(in_gw,*) ncell                         !number of gwflow cells
       endif
       read(in_gw,*) bc_type                         !boundary condition type
@@ -191,16 +194,16 @@
       
       !check connections (HRU-cell or LSU-cell) -----------------------------------------------------------------------
       write(out_gw,*) '     checking for connection (HRU, LSU) files...'
-      if (conn_type == 1) then !HRU-cell
+      if(conn_type == 1) then !HRU-cell
         inquire(file='gwflow.hrucell',exist=i_exist)
-        if (i_exist) then
+        if(i_exist) then
           hru_cells_link = 1
           lsu_cells_link = 0
           write(out_gw,*) '          found gwflow.hrucell: proceed'
         else
           hru_cells_link = 0
           inquire(file='gwflow.lsucell',exist=i_exist) !try LSU-cell connection instead
-          if (i_exist) then
+          if(i_exist) then
             lsu_cells_link = 1
             gw_soil_flag = 0 !gw-->soil transfer can occur only for HRU-cell connection
             gw_wet_flag = 0 !wetland transfer can occur only for HRU-cell connection
@@ -209,9 +212,9 @@
             write(out_gw,*) '          gwflow.lsucell: gw-->wetland transfer not simulated'
           endif
         endif
-      elseif (conn_type == 2) then !LSU-cell
+      elseif(conn_type == 2) then !LSU-cell
         inquire(file='gwflow.lsucell',exist=i_exist)
-        if (i_exist) then
+        if(i_exist) then
           lsu_cells_link = 1
           hru_cells_link = 0
           gw_soil_flag = 0 !gw-->soil transfer cannot occur if LSU-cell linkage is active
@@ -222,7 +225,7 @@
         else
           lsu_cells_link = 0
           inquire(file='gwflow.hrucell',exist=i_exist) !try HRU-cell connection instead
-          if (i_exist) then
+          if(i_exist) then
             hru_cells_link = 1
             write(out_gw,*) '          gwflow.lsucell not found: using gwflow.hrucell'
           endif
@@ -280,7 +283,7 @@
       
       !if a structured grid, read in structured cell data -------------------------------------------------------------
       !(then, convert to usg arrays)
-      if (grid_type == "structured") then
+      if(grid_type == "structured") then
       read(in_gw,*) header
       
       !cell status
@@ -298,7 +301,7 @@
       do i=1,grid_nrow
         do j=1,grid_ncol
           count = count + 1
-          if (grid_status(i,j) > 0) then
+          if(grid_status(i,j) > 0) then
             !add to cell list; set new cell id
             ncell = ncell + 1
             cell_id_usg(i,j) = ncell
@@ -571,8 +574,7 @@
       endif !test for grid type
       
 
-      !cell operations ------------------------------------------------------------------------------------------------
-      !count the number of active cells
+      !count the number of active cells -------------------------------------------------------------------------------
       write(out_gw,*) '     counting number of active cells'
       num_active = 0
       do i=1,ncell
@@ -581,37 +583,6 @@
         endif
       enddo
 
-      !calculate active area of the watershed, for the gwflow grid
-      gwflow_area = 0.
-      do i=1,ncell
-        if (gw_state(i)%stat == 1) then
-          gwflow_area = gwflow_area + gw_state(i)%area
-        endif
-      enddo
-
-      !for boundary cells: store id of the closest active cell
-      allocate(gw_bound_near(ncell))
-      allocate(gw_bound_dist(ncell))
-      gw_bound_near = 0
-      gw_bound_dist = 0.
-      do i=1,ncell
-        if (gw_state(i)%stat == 2) then
-          min_dist = 1000000. 
-          do j=1,ncell
-            if(gw_state(j)%stat == 1) then
-              dist_x = gw_state(i)%xcrd - gw_state(j)%xcrd !m
-              dist_y = gw_state(i)%ycrd - gw_state(j)%ycrd !m
-              distance = sqrt((dist_x)**2 + (dist_y)**2)
-              if(distance.lt.min_dist) then
-                min_dist = distance
-                active_cell = j
-              endif
-            endif
-          enddo  
-          gw_bound_near(i) = active_cell
-          gw_bound_dist(i) = min_dist
-        endif
-      enddo
       
       !groundwater output times (times at which groundwater head for each cell will be output) ------------------------
       write(out_gw,*) '     reading groundwater output times'
@@ -630,16 +601,19 @@
       read(in_gw,*) gw_num_obs_wells
       allocate(gw_obs_cells(gw_num_obs_wells))
       !check to see if there are USGS well names (for the national model)
-      inquire(file='usgs_annual_head',exist=i_exist)
-      if (usgs_obs == 1) then
+      inquire(file='usgs_annual_head',exist=usgs_obs)
+      if(usgs_obs) then
         allocate(usgs_id(gw_num_obs_wells))
       endif
       !loop through the observation well locations
       do k=1,gw_num_obs_wells
-        if(usgs_obs == 1) then
+        if(usgs_obs) then
           read(in_gw,*) gw_obs_cells(k),usgs_id(k)
         else
           read(in_gw,*) gw_obs_cells(k)
+        endif
+        if(grid_type == "structured") then
+          gw_obs_cells(k) = cell_id_list(gw_obs_cells(k))
         endif
       enddo
       allocate(gw_obs_head(gw_num_obs_wells))
@@ -650,31 +624,25 @@
       write(out_gwobs,123) 'cell:',(gw_obs_cells(k),k=1,gw_num_obs_wells)
       write(out_gwobs,*)
       gw_output_index = 1 !start output index at 1
-      !if structured grid, then convert cell ids
-      do k=1,gw_num_obs_wells
-        if(grid_type == "structured") then
-          gw_obs_cells(k) = cell_id_list(gw_obs_cells(k))
-        endif
-      enddo
-
+      
       
       !cell for detailed daily groundwater source/sink output ---------------------------------------------------------
       read(in_gw,*) header
       read(in_gw,*) gw_cell_obs_ss
-      !if(grid_type == "structured") then
-      !  gw_cell_obs_ss = cell_id_list(gw_cell_obs_ss)
-      !endif
-      !open(out_gwobs_ss,file='gwflow_cell_ss')
-      !write(out_gwobs_ss,*) 'Daily sources and sinks for cell'
-      !write(out_gwobs_ss,*) 'cell:',gw_cell_obs_ss
-      !gwflow_hdr = (/"year","day","head","vol_bef","vol_aft","rech","gwet","gwsw","swgw","satex","gwsoil", &
-      !                   "lateral","pump_ag","pump_ex","tile","res","wet","canal","fplain"/)
-      !write(out_gwobs_ss,119) (gwflow_hdr(j),j=1,19)
-      !allocate(gw_cell_obs_ss_vals(17))
+      if(grid_type == "structured") then
+        gw_cell_obs_ss = cell_id_list(gw_cell_obs_ss)
+			endif
+      open(out_gwobs_ss,file='gwflow_cell_ss')
+      write(out_gwobs_ss,*) 'Daily sources and sinks for cell'
+      write(out_gwobs_ss,*) 'cell:',gw_cell_obs_ss
+      gwflow_hdr = (/"year","day","head","vol_bef","vol_aft","rech","gwet","gwsw","swgw","satex","gwsoil", &
+                         "lateral","pump_ag","pump_ex","tile","res","wet","canal","fplain"/)
+      write(out_gwobs_ss,119) (gwflow_hdr(j),j=1,19)
+      allocate(gw_cell_obs_ss_vals(17))
       
       
       !if usgs observation wells, read in annual head data from national data set -------------------------------------
-      if (usgs_obs == 1) then
+      if(usgs_obs) then
         open(in_usgs_head,file='usgs_annual_head')
         read(in_usgs_head,*) 
         num_usgs_wells = 356785 
@@ -723,7 +691,7 @@
         gw_chan_thick(i) = zones_strbed(gw_chan_zone(i))
       enddo
       read(in_gw,*)
-      read(in_gw,*) gw_bed_change !vertical distance correction for streambed elevation
+      read(in_gw,*) bed_change !vertical distance correction for streambed elevation
       close(in_gw)
       
       
@@ -831,7 +799,7 @@
       enddo
       
       !groundwater-->soil transfer ----------------------------------------------------------------
-      if (gw_soil_flag == 1) then
+      if(gw_soil_flag) then
         write(out_gw,*) '          groundwater-->soil transfer'
         !flux output file
         open(out_gw_soil,file='gwflow_flux_soil')
@@ -864,7 +832,7 @@
       !groundwater saturation excess flow ---------------------------------------------------------
       !for each grid cell: find the nearest channel cell
       !saturation excess water is then added to the stream channel that is connected to the channel cell
-      if (gw_satx_flag == 1) then
+      if(gw_satx_flag) then
         write(out_gw,*) '          groundwater saturation excess flow'
         allocate(gw_satx_info(sp_ob%chandeg))
         !count the cells connected to each channel
@@ -918,8 +886,8 @@
       open(out_hru_pump_mo,file='gwflow_flux_pumping_hru_mo')
       write(out_hru_pump_mo,*) 'Monthly pumped volume (m3) (irrigation) for HRUs'
       write(out_hru_pump_mo,*) 'Columns: each month of the simulation'
-      inquire(file='gwflow.hru_pump_observe',exist=i_exist)
-      if (hru_pump_flag == 1) then
+      inquire(file='gwflow.hru_pump_observe',exist=hru_pump_flag)
+      if(hru_pump_flag) then
         open(in_hru_pump_obs,file='gwflow.hru_pump_observe')
         read(in_hru_pump_obs,*)
         read(in_hru_pump_obs,*) num_hru_pump_obs
@@ -936,7 +904,7 @@
       endif
       
       !groundwater pumping (specified) ------------------------------------------------------------
-      if (gw_pumpex_flag == 1) then
+      if(gw_pumpex_flag) then
       inquire(file='gwflow.pumpex',exist=i_exist)
       if(i_exist) then
         write(out_gw,*) '          groundwater pumping external (gwflow.pumpex found)'
@@ -947,25 +915,19 @@
         allocate(gw_pumpex_nperiods(gw_npumpex))
         allocate(gw_pumpex_dates(gw_npumpex,2,1000))
         allocate(gw_pumpex_rates(gw_npumpex,1000))
-        gw_pumpex_cell = 0
         gw_pumpex_nperiods = 0
         gw_pumpex_rates = 0.
         do i=1,gw_npumpex !read in the information for each pump
           read(in_gw,*) 
-          read(in_gw,*) pumpex_cell,gw_pumpex_nperiods(i)
-          if(grid_type == "structured") then
-            gw_pumpex_cell(i) = cell_id_list(pumpex_cell) 
-          elseif(grid_type == "unstructured") then
-            gw_pumpex_cell(i) = pumpex_cell
-          endif
-        do j=1,gw_pumpex_nperiods(i)
+          read(in_gw,*) gw_pumpex_cell(i),gw_pumpex_nperiods(i)
+          do j=1,gw_pumpex_nperiods(i)
             read(in_gw,*) gw_pumpex_dates(i,1,j),gw_pumpex_dates(i,2,j),gw_pumpex_rates(i,j)
-          enddo          
+          enddo
         enddo
         close(in_gw)
         gw_daycount = 1
         !flux output file
-        open(out_gw_pumpex,file='gwflow_flux_ppex')
+        open(out_gw_pumpex,file='gwflow_flux_pumping_ex')
         write(out_gw_pumpex,*) 'Annual pumping rate (m3/day) (specified)'
       else
         write(out_gw,*) '          gwflow.pumpex not found; pumping not simulated'
@@ -974,7 +936,7 @@
       
       !tile drainage outflow ----------------------------------------------------------------------
       !tile drain cell information
-      if (gw_tile_flag == 1) then
+      if(gw_tile_flag) then
       inquire(file='gwflow.tiles',exist=i_exist)
       if(i_exist) then
         write(out_gw,*) '          groundwater-tile drainage outflow (gwflow.tiles found)'
@@ -986,7 +948,7 @@
         read(in_gw,*) gw_tile_K
         read(in_gw,*) gw_tile_group_flag
         !read in tile cell groups (if any)
-        if(gw_tile_group_flag == 1) then
+        if(gw_tile_group_flag.eq.1) then
           read(in_gw,*) gw_tile_num_group
           allocate(gw_tile_groups(gw_tile_num_group,5000))
           do i=1,gw_tile_num_group
@@ -1042,17 +1004,17 @@
         !flux output file
         open(out_gw_tile,file='gwflow_flux_tile')
         write(out_gw_tile,*) 'Annual tile flows (m3/day)'
-        else
+			else
         write(out_gw,*) '          gwflow.tiles not found; tile drainage not simulated'
       endif
       endif !end tile drainage
 
       !aquifer-reservoir exchange -----------------------------------------------------------------
-      if (gw_res_flag == 1) then
+      if(gw_res_flag) then
       inquire(file='gwflow.rescells',exist=i_exist)
       if(i_exist) then
         write(out_gw,*) '          groundwater-reservoir exchange (gwflow.rescells found)'
-        open(in_res_cell,file='gwflow.rescells')
+		    open(in_res_cell,file='gwflow.rescells')
         read(in_res_cell,*) header
         read(in_res_cell,*) header
         !read in reservoir bed conductivity (m/day) and thickness (m)
@@ -1067,7 +1029,7 @@
           read(in_res_cell,*) res_cell,res_id,res_stage
           if(res_id > 0) then
             gw_resv_info(res_id)%ncon = gw_resv_info(res_id)%ncon + 1
-          endif
+					endif
         enddo
         !allocate arrays and re-read information
         do i=1,sp_ob%res
@@ -1095,18 +1057,18 @@
             gw_resv_info(res_id)%elev(gw_resv_info(res_id)%ncon) = gw_state(res_cell)%elev
             gw_resv_info(res_id)%hydc(gw_resv_info(res_id)%ncon) = res_K
             gw_resv_info(res_id)%thck(gw_resv_info(res_id)%ncon) = res_thick
-          endif
+					endif
         enddo
         !flux output file
         open(out_gw_res,file='gwflow_flux_resv')
         write(out_gw_res,*) 'Annual groundwater-reservoir exchange (m3/day)' 
-        else
+			else
         write(out_gw,*) '          gwflow.rescells not found (groundwater-res exchange not simulated)'
       endif
       endif !end reservoir exchange
       
       !aquifer-wetland exchange -------------------------------------------------------------------
-      if (gw_wet_flag == 1) then
+      if(gw_wet_flag) then
         write(out_gw,*) '          groundwater-->wetland exchange'
         !wetland bed thickness for each wetland object is read in wet_read_hyd; set default value here
         allocate(wet_thick(sp_ob%hru))
@@ -1119,7 +1081,7 @@
       !aquifer-floodplain exchange ----------------------------------------------------------------
       allocate(flood_freq(sp_ob%chandeg))
       flood_freq = 0
-      if (gw_fp_flag == 1) then
+      if(gw_fp_flag) then
       inquire(file='gwflow.floodplain',exist=i_exist)
       if(i_exist) then
         write(out_gw,*) '          groundwater-floodplain exchange (gwflow.floodplain found)'
@@ -1144,7 +1106,7 @@
             gw_fp_area(i) = gw_state(gw_fp_cellid(i))%area
           endif
           !track the number of cells for each channel
-          channel = gw_fp_chanid(i) !channel connected to cell
+			    channel = gw_fp_chanid(i) !channel connected to cell
           gw_fpln_info(channel)%ncon = gw_fpln_info(channel)%ncon + 1
         enddo
         !allocate arrays holding the cell information
@@ -1157,12 +1119,11 @@
         enddo
         !populate the array holding the cell numbers for each channel
         do i=1,gw_fp_ncells
-          channel = gw_fp_chanid(i) !channel connected to cell
+			    channel = gw_fp_chanid(i) !channel connected to cell
           gw_fpln_info(channel)%ncon = gw_fpln_info(channel)%ncon + 1
           gw_fpln_info(channel)%cells(gw_fpln_info(channel)%ncon) = gw_fp_cellid(i)
           gw_fpln_info(channel)%hydc(gw_fpln_info(channel)%ncon) = gw_fp_K(i)
           gw_fpln_info(channel)%area(gw_fpln_info(channel)%ncon) = gw_fp_area(i)
-          gw_fpln_info(channel)%mtch(gw_fpln_info(channel)%ncon) = 0
           do k=1,sp_ob%gwflow !loop through channel cells - see if there is a match
             if(gw_fp_cellid(i) == gw_chan_id(k)) then
               gw_fpln_info(channel)%mtch(gw_fpln_info(channel)%ncon) = k
@@ -1172,14 +1133,14 @@
         !flux output file
         open(out_gw_fp,file='gwflow_flux_floodplain')
         write(out_gw_fp,*) 'Annual floodplain seepage (m3/day)'  
-        else
+			else
         write(out_gw,*) '          gwflow.floodplain not found (groundwater-fp exchange not simulated)'
       endif
       endif !end floodplain exchange
       
       !groundwater seepage from canals ------------------------------------------------------------
       !canal seepage information (these are for cells that are connected to irrigation canals)
-      if (gw_canal_flag == 1) then
+      if(gw_canal_flag) then
       inquire(file='gwflow.canals',exist=i_exist)
       if(i_exist) then
         write(out_gw,*) '          canal-->groundwater seepage (gwflow.canals found)'
@@ -1203,7 +1164,7 @@
             canal_out_info(i,5) = day_end
           else
             gw_chan_canl_info(channel)%ncanal = gw_chan_canl_info(channel)%ncanal + 1
-          endif
+					endif
         enddo
         !allocate arrays for canal attributes
         do i=1,sp_ob%chandeg
@@ -1230,7 +1191,7 @@
             gw_chan_canl_info(channel)%thck(gw_chan_canl_info(channel)%ncanal) = thick
             gw_chan_canl_info(channel)%dayb(gw_chan_canl_info(channel)%ncanal) = day_beg
             gw_chan_canl_info(channel)%daye(gw_chan_canl_info(channel)%ncanal) = day_end
-          endif
+					endif
         enddo
         !read in the canal bed K values for each zone
         read(in_canal_cell,*) header
@@ -1273,7 +1234,7 @@
           read(in_canal_cell,*) cell_num,canal,length,stage,K_zone
           if(canal_out(canal) == 0) then
             gw_canl_info(canal)%ncon = gw_canl_info(canal)%ncon + 1
-          endif
+					endif
         enddo
         !allocate arrays holding cell attributes
         do i=1,gw_ncanal
@@ -1304,7 +1265,7 @@
           read(in_canal_cell,*) cell_num,canal,length,stage,K_zone
           if(grid_type == "structured") then
             cell_num = cell_id_list(cell_num)
-          endif
+					endif
           if(cell_num > 0) then
             if(canal_out(canal) == 1) then !canal water from outside the model domain
               gw_canal_ncells_out = gw_canal_ncells_out + 1
@@ -1329,7 +1290,7 @@
         !flux output file
         open(out_gw_canal,file='gwflow_flux_canl')
         write(out_gw_canal,*) 'Annual canal seepage (m3/day)' 
-        else
+			else
         write(out_gw,*) '          gwflow.canals not found (canal seepage not simulated)'
       endif
       endif !end canal seepage
@@ -1339,7 +1300,7 @@
       !groundwater solute transport option ------------------------------------------------------------------
       write(out_gw,*)
       
-      if (gw_solute_flag == 1) then
+      if(gw_solute_flag) then
       inquire(file='gwflow.solutes',exist=i_exist)
       if(i_exist) then 
       
@@ -1428,51 +1389,12 @@
             read(in_gw,*) (gwsol_state(i)%solute(s)%conc,s=1,gw_nsolute)
           enddo
         endif
-        !if salts active: read in salt mineral data (if provided)
-        if(gwsol_salt == 1) then
-          inquire(file='gwflow.solutes.minerals',exist=i_exist)
-          if(gwsol_minl == 1) then
-            open(in_gw_minl,file='gwflow.solutes.minerals')
-            read(in_gw_minl,*) header
-            read(in_gw_minl,*) gw_nminl
-            !allocate arrays based on number of salt minerals
-            allocate(gwsol_minl_state(ncell))
-            do i=1,ncell
-              allocate(gwsol_minl_state(i)%fract(gw_nminl))
-            enddo
-            !read in initial salt minerals fractions
-            read(in_gw_minl,*) header
-            if(grid_type == "structured") then
-            !read one mineral at a time
-            do m=1,gw_nminl
-              read(in_gw_minl,*) header
-              read(in_gw_minl,*) read_type
-              if(read_type == "single") then
-                read(in_gw_minl,*) single_value
-                grid_val = single_value
-              elseif(read_type == "array") then
-                do i=1,grid_nrow
-                  read(in_gw_minl,*) (grid_val(i,j),j=1,grid_ncol)
-                enddo
-              endif
-              do i=1,grid_nrow
-                do j=1,grid_ncol
-                  if(cell_id_usg(i,j) > 0) then
-                    gwsol_minl_state(cell_id_usg(i,j))%fract(m) = grid_val(i,j)
-                  endif 
-                enddo
-              enddo
-            enddo
-          elseif(grid_type == "unstructured") then
-            !read one cell at a time (solutes across columns)
-            do i=1,ncell
-              read(in_gw_minl,*) (gwsol_minl_state(i)%fract(m),m=1,gw_nminl)
-            enddo
-          endif
-          endif
-        endif
+        !if salts active: read in salt mineral fractions
+        !fill this in...
+        
+        
         !if constituents active: read in reaction group and shale fractions
-        if (gwsol_cons == 1) then 
+        if(gwsol_cons) then 
           !allocate solute chem array
           allocate(gwsol_chem(ncell))
           do i=1,ncell
@@ -1574,7 +1496,7 @@
         !allocate all mass arrays for sources and sinks
         allocate(gwsol_ss(ncell))
         do i=1,ncell
-         allocate(gwsol_ss(i)%solute(gw_nsolute))
+				  allocate(gwsol_ss(i)%solute(gw_nsolute))
         enddo
         !allocate all mass arrays for sums of sources and sinks
         allocate(gwsol_ss_sum(ncell))
@@ -1593,14 +1515,14 @@
         open(out_sol_gwsw,file='gwflow_mass_gwsw')
         write(out_sol_gwsw,*) 'Annual gw-channel exchange mass (kg/day)'
         !ground-->soil transfer
-        if(gw_soil_flag == 1) then
+        if(gw_soil_flag.eq.1) then
           open(out_sol_soil,file='gwflow_mass_soil')
           write(out_sol_soil,*) 'Annual groundwater-->soil mass transfer (kg/day)'
         endif
         allocate(hru_soil(num_hru,20,gw_nsolute))
         hru_soil = 0.
         !saturation excess flow 
-        if (gw_satx_flag == 1) then
+        if(gw_satx_flag.eq.1) then
           open(out_sol_satx,file='gwflow_mass_satx')
           write(out_sol_satx,*) 'Annual saturation excess flow mass (kg/day)'  
         endif
@@ -1608,32 +1530,32 @@
         open(out_sol_ppag,file='gwflow_mass_ppag')
         write(out_sol_ppag,*) 'Annual mass in pumping (kg/day) (irrigation)'
         !specified pumping
-        if (gw_pumpex_flag == 1) then
+        if(gw_pumpex_flag) then
           open(out_sol_ppex,file='gwflow_mass_ppex')
           write(out_sol_ppex,*) 'Annual mass in pumping (kg/day) (specified)'
         endif
         !tile drainage
-        if (gw_tile_flag == 1) then
+        if(gw_tile_flag) then
           open(out_sol_tile,file='gwflow_mass_tile')
           write(out_sol_tile,*) 'Annual mass in tile flow (kg/day)'
         endif
         !reservoir
-        if (gw_res_flag == 1) then
+        if(gw_res_flag) then
           open(out_sol_resv,file='gwflow_mass_resv')
           write(out_sol_resv,*) 'Annual groundwater-reservoir exchange mass (kg/day)' 
         endif
         !wetland exchange
-        if (gw_wet_flag == 1) then
+        if(gw_wet_flag) then
           open(out_sol_wetl,file='gwflow_mass_wetl')
           write(out_sol_wetl,*) 'Annual groundwater-wetland exchange mass (kg/day)' 
         endif
         !floodplain exchange
-        if (gw_fp_flag == 1) then
+        if(gw_fp_flag) then
           open(out_sol_fpln,file='gwflow_mass_fpln')
           write(out_sol_fpln,*) 'Annual floodplain seepage mass (kg/day)'  
         endif
         !canal seepage
-        if (gw_canal_flag == 1) then
+        if(gw_canal_flag) then
           open(out_sol_canl,file='gwflow_mass_canl')
           write(out_sol_canl,*) 'Annual canal seepage mass (kg/day)' 
         endif
@@ -1647,7 +1569,7 @@
         write(out_gwobs_sol,*)
         allocate(gw_obs_solute(gw_num_obs_wells,gw_nsolute))
         gw_obs_solute = 0.
-      else
+			else
         gw_solute_flag = 0 !turn off transport option
       endif
       endif !end solute transport
@@ -1658,7 +1580,7 @@
       !if LSU-cell connection is active (i.e., file is provided), it supercedes HRU-cell connection
       write(out_gw,*)
       write(out_gw,*) '     read and prepare connection (HRU-cell or LSU-cell)'
-      if (lsu_cells_link == 1) then
+      if(lsu_cells_link) then
         write(out_gw,*) '          LSU-cell connections (gwflow.lsucell)'
         open(in_lsu_cell,file='gwflow.lsucell')  
         read(in_lsu_cell,*) header
@@ -1707,8 +1629,8 @@
       !for normal gwflow applications, the Cell-HRU connection will be used, using the gwflow.cellhru file. However, for applications
       !with the national agroecosystem model, the Cell-HUC12 connection will be used. If the gwflow.huc12cell file is present in the folder,
       !then the national model approach will be used.
-      inquire(file='gwflow.huc12cell',exist=i_exist)
-      if (nat_model == 1) then
+      inquire(file='gwflow.huc12cell',exist=nat_model)
+      if(nat_model) then
 		    !read in the HUC12 subwatersheds
         open(5100,file='out.key')
         allocate(huc12(sp_ob%outlet))
@@ -1737,7 +1659,7 @@
             backspace(5101)
           enddo
 15      enddo
-       endif
+			endif
       
       !HRU-cell connection
       write(out_gw,*) '          HRU-cell connections (gwflow.hrucell)'
@@ -1792,7 +1714,7 @@
       !for normal gwflow applications, the Cell-HRU connection will be used, using the gwflow.cellhru file. However, for applications
       !with the NAM, the Cell-HUC12 connection will be used. If the gwflow.huc12cell file is present in the folder,
       !then the national model approach will be used.
-      if (nat_model == 1) then
+      if(nat_model) then
         !read in the list of grid cells for each HUC12
         open(in_huc_cell,file='gwflow.huc12cell')
         read(in_huc_cell,*)
@@ -1897,7 +1819,8 @@
         open(out_gwbal,file='gwflow_balance_gw_day')
         write(out_gwbal,*) 'Groundwater watershed-wide fluxes for each day'
         write(out_gwbal,*)
-        write(out_gwbal,*) 'watershed area (m2):',(bsn%area_tot_ha*10000.)
+        write(out_gwbal,*) 'watershed area (m2):'
+        write(out_gwbal,*) watershed_area
         write(out_gwbal,*)
         write(out_gwbal,*) 'Positive value: groundwater added to aquifer'
         write(out_gwbal,*) 'Negative value: groundwater removed from aquifer'
@@ -1924,10 +1847,11 @@
         write(out_gwbal,*) 'satfr:        --   fraction of cells that have water table at ground'
         write(out_gwbal,*) 'wtdep:        m    average depth to water table for watershed'
         write(out_gwbal,*) 'ppdf:         mm   groundwater demand not satisfied for irrigation'
+      
         write(out_gwbal,*)
-        gwflow_hdr_day = [character(len=24) :: "year","day","ts","vbef","vaft","rech","gwet","gwsw","swgw","satx","soil", &
+        gwflow_hdr_day = (/"year","day","ts","vbef","vaft","rech","gwet","gwsw","swgw","satx","soil", &
                                              "latl","bndr","ppag","ppex","tile","resv","wetl","canl", &
-                                             "fpln","error","satfr","wtdepth","ppdf"]
+                                             "fpln","error","satfr","wtdepth","ppdf"/)
         write(out_gwbal,119) (gwflow_hdr_day(j),j=1,24)
       endif
 
@@ -1936,7 +1860,7 @@
         open(out_gwbal_yr,file='gwflow_balance_gw_yr')
         write(out_gwbal_yr,*) 'Groundwater watershed-wide fluxes for each year'
         write(out_gwbal_yr,*)
-        write(out_gwbal_yr,*) 'watershed area (m2):',(bsn%area_tot_ha*10000.)
+        write(out_gwbal_yr,*) 'watershed area (m2):',watershed_area
         write(out_gwbal_yr,*)
         write(out_gwbal_yr,*) 'Positive value: groundwater added to aquifer'
         write(out_gwbal_yr,*) 'Negative value: groundwater removed from aquifer'
@@ -1959,8 +1883,8 @@
         write(out_gwbal_yr,*) 'fpln:      mm   floodplain exchange'
         write(out_gwbal_yr,*) 'ppdf:      mm   groundwater demand not satisfied for irrigation'
         write(out_gwbal_yr,*)
-        gwflow_hdr_yr = [character(len=18) :: "  year","dvol","rech","gwet","gwsw","swgw","satx","soil","latl","bndr",  &
-              "ppag","ppex","tile","resv","wetl","canl","fpln","ppdf"]
+        gwflow_hdr_yr = (/"  year","dvol","rech","gwet","gwsw","swgw","satx","soil","latl","bndr","ppag","ppex", &
+                                   "tile","resv","wetl","canl","fpln","ppdf"/)
         write(out_gwbal_yr,120) (gwflow_hdr_yr(j),j=1,18)
       endif
       
@@ -1969,7 +1893,7 @@
         open(out_gwbal_aa,file='gwflow_balance_gw_aa')
         write(out_gwbal_aa,*) 'Average annual groundwater watershed-wide fluxes'
         write(out_gwbal_aa,*)
-        write(out_gwbal_aa,*) 'watershed area (m2):',(bsn%area_tot_ha*10000.)
+        write(out_gwbal_aa,*) 'watershed area (m2):',watershed_area
         write(out_gwbal_aa,*)
         write(out_gwbal_aa,*) 'Positive value: groundwater added to aquifer'
         write(out_gwbal_aa,*) 'Negative value: groundwater removed from aquifer'
@@ -1992,14 +1916,13 @@
         write(out_gwbal_aa,*) 'fpln:      mm   floodplain exchange'
         write(out_gwbal_aa,*) 'ppdf:      mm   groundwater demand not satisfied for irrigation'
         write(out_gwbal_aa,*)
-        gwflow_hdr_aa = [character(len=18) :: "  year","dvol","rech","gwet","gwsw","swgw","satx","soil",  &
-                     "latl","bndr","ppag","ppex","tile","resv","wetl","canl","fpln","ppdf"]
+        gwflow_hdr_aa = (/"  year","dvol","rech","gwet","gwsw","swgw","satx","soil","latl","bndr","ppag","ppex", &
+                                   "tile","resv","wetl","canl","fpln","ppdf"/)
         write(out_gwbal_aa,120) (gwflow_hdr_aa(j),j=1,18)
       endif
       
       !open file to write out average annual groundwater water balance for each HUC12 catchment
-      !average annual results
-      if (nat_model == 1) then
+      if(nat_model) then
       open(out_huc12wb,file='gwflow_balance_huc12')
       write(out_huc12wb,*) 'Total groundwater fluxes for each HUC12'
       write(out_huc12wb,*)
@@ -2022,44 +1945,15 @@
       write(out_huc12wb,*) 'fplain:        mm   floodplain exchange'
       write(out_huc12wb,*) 'pump_def:      mm   groundwater demand not satisfied for irrigation'
       write(out_huc12wb,*)
-      gwflow_hdr_huc12 = [character(len=16) :: "  HUC12","rech","gwet","gwsw","swgw","satex","gwsoil","lateral","pump_ag",  &
-              "pump_ex","tile","res","wet","canal","fplain","pump_def"]
+      gwflow_hdr_huc12 = (/"  HUC12","rech","gwet","gwsw","swgw","satex","gwsoil","lateral","pump_ag","pump_ex","tile","res","wet","canal","fplain","pump_def"/)
       write(out_huc12wb,122) (gwflow_hdr_huc12(j),j=1,16)
       allocate(gw_huc12_wb(15,sp_ob%outlet))
       gw_huc12_wb = 0.
-      !monthly results
-      open(out_huc12wb_mo,file='gwflow_balance_huc12_mon')
-      write(out_huc12wb_mo,*) 'Monthly total groundwater fluxes for each HUC12'
-      write(out_huc12wb_mo,*)
-      write(out_huc12wb_mo,*) 'Positive value: groundwater added to aquifer'
-      write(out_huc12wb_mo,*) 'Negative value: groundwater removed from aquifer'
-      write(out_huc12wb_mo,*)
-      write(out_huc12wb_mo,*) 'rech:          mm   soil water added to groundwater'
-      write(out_huc12wb_mo,*) 'gwet:          mm   groundwater removed by evapotranspiration'
-      write(out_huc12wb_mo,*) 'gwsw:          mm   groundwater discharge to streams'
-      write(out_huc12wb_mo,*) 'swgw:          mm   stream water seepage to groundwater'
-      write(out_huc12wb_mo,*) 'satex:         mm   saturation excess flow (water table above ground)'
-      write(out_huc12wb_mo,*) 'gwsoil:        mm   groundwater transferred to HRU soil profile'
-      write(out_huc12wb_mo,*) 'lateral:       mm   groundwater added/removed via lateral flow'
-      write(out_huc12wb_mo,*) 'pump_ag:       mm   groundwater pumped for irrigation'
-      write(out_huc12wb_mo,*) 'pump_ex:       mm   groundwater pumping specified by user'
-      write(out_huc12wb_mo,*) 'tile:          mm   groundwater removed via tile drains'
-      write(out_huc12wb_mo,*) 'res:           mm   groundwater exchanged with reservoirs'
-      write(out_huc12wb_mo,*) 'wet:           mm   groundwater outflow to wetlands'
-      write(out_huc12wb_mo,*) 'pump_def:      mm   groundwater demand not satisfied for irrigation'
-      write(out_huc12wb_mo,*) 'canal:         mm   canal seepage to groundwater'
-      write(out_huc12wb_mo,*) 'fplain:        mm   floodplain exchange'
-      write(out_huc12wb_mo,*)
-      gwflow_hdr_huc12_mo = [character(len=18) :: "year","month","  HUC12","rech","gwet","gwsw","swgw","satex",  &
-          "gwsoil","lateral","pump_ag","pump_ex","tile","res","wet","canal","fplain","pump_def"]
-      write(out_huc12wb_mo,122) (gwflow_hdr_huc12_mo(j),j=1,18)
-      allocate(gw_huc12_wb_mo(15,sp_ob%outlet))
-      gw_huc12_wb_mo = 0.
       endif
       
       
       !initialize solute mass balance ---------------------------------------------------------------------------------------------------------------
-      if (gw_solute_flag == 1) then
+      if(gw_solute_flag) then
       
         !allocate yearly and total arrays
         allocate(sol_grid_chng_yr(gw_nsolute))
@@ -2069,9 +1963,7 @@
         allocate(sol_grid_satx_yr(gw_nsolute))
         allocate(sol_grid_advn_yr(gw_nsolute))
         allocate(sol_grid_disp_yr(gw_nsolute))
-        allocate(sol_grid_rcti_yr(gw_nsolute))
-        allocate(sol_grid_rcto_yr(gw_nsolute))
-        allocate(sol_grid_minl_yr(gw_nsolute))
+        allocate(sol_grid_rctn_yr(gw_nsolute))
         allocate(sol_grid_sorb_yr(gw_nsolute))
         allocate(sol_grid_ppag_yr(gw_nsolute))
         allocate(sol_grid_ppex_yr(gw_nsolute))
@@ -2088,9 +1980,7 @@
         allocate(sol_grid_satx_tt(gw_nsolute))
         allocate(sol_grid_advn_tt(gw_nsolute))
         allocate(sol_grid_disp_tt(gw_nsolute))
-        allocate(sol_grid_rcti_tt(gw_nsolute))
-        allocate(sol_grid_rcto_tt(gw_nsolute))
-        allocate(sol_grid_minl_tt(gw_nsolute))
+        allocate(sol_grid_rctn_tt(gw_nsolute))
         allocate(sol_grid_sorb_tt(gw_nsolute))
         allocate(sol_grid_ppag_tt(gw_nsolute))
         allocate(sol_grid_ppex_tt(gw_nsolute))
@@ -2124,9 +2014,7 @@
             write(out_solbal_dy+n,*) 'soil:      kg   solute mass loaded to HRU soil profiles'
             write(out_solbal_dy+n,*) 'advn:      kg   solute mass transported by advection'
             write(out_solbal_dy+n,*) 'disp:      kg   solute mass transported by dispersion'
-            write(out_solbal_dy+n,*) 'rcti:      kg   solute mass produced by kinetic reaction'
-            write(out_solbal_dy+n,*) 'rcto:      kg   solute mass consumed by kinetic reaction'
-            write(out_solbal_dy+n,*) 'minl:      kg   solute mass added by mineral dissolution'            
+            write(out_solbal_dy+n,*) 'rctn:      kg   solute mass removed by denitrification'
             write(out_solbal_dy+n,*) 'sorb:      kg   solute mass removed by sorption'
             write(out_solbal_dy+n,*) 'ppag:      kg   solute mass removed by groundwater pumping for irrigation'
             write(out_solbal_dy+n,*) 'ppex:      kg   solute mass removed by groundwater pumping specified by user'
@@ -2137,9 +2025,9 @@
             write(out_solbal_dy+n,*) 'fpln:      kg   solute mass in floodplain exchange'
             write(out_solbal_dy+n,*) 'error:     --   mass balance error for aquifer'
             write(out_solbal_dy+n,*)
-            sol_hdr_day = [character(len=24) :: "  year","   day","ts","mbef","maft","rech","gwsw","swgw","satx","soil","advn", &
-                            "disp","rcti","rcto","minl","sorb","ppag","ppex","tile","resv","wetl","canl","fpln","error"]
-            write(out_solbal_dy+n,119) (sol_hdr_day(j),j=1,24)
+            sol_hdr_day = (/"  year","   day","ts","mbef","maft","rech","gwsw","swgw","satx","soil","advn", &
+                            "disp","rctn","sorb","ppag","ppex","tile","resv","wetl","canl","fpln","error"/)
+            write(out_solbal_dy+n,119) (sol_hdr_day(j),j=1,22)
           endif
 
           !yearly solute mass balance
@@ -2160,9 +2048,7 @@
             write(out_solbal_yr+n,*) 'soil:     kg   solute mass loaded to HRU soil profiles'
             write(out_solbal_yr+n,*) 'advn:     kg   solute mass transported by advection'
             write(out_solbal_yr+n,*) 'disp:     kg   solute mass transported by dispersion'
-            write(out_solbal_yr+n,*) 'rcti:      kg   solute mass produced by kinetic reaction'
-            write(out_solbal_yr+n,*) 'rcto:      kg   solute mass consumed by kinetic reaction'
-            write(out_solbal_yr+n,*) 'minl:      kg   solute mass added by mineral dissolution' 
+            write(out_solbal_yr+n,*) 'rctn:     kg   solute mass removed by denitrification'
             write(out_solbal_yr+n,*) 'sorb:     kg   solute mass removed by denitrification'
             write(out_solbal_yr+n,*) 'ppag:     kg   solute mass removed by groundwater pumping for irrigation'
             write(out_solbal_yr+n,*) 'ppex:     kg   solute mass removed by groundwater pumping specified by user'
@@ -2172,9 +2058,9 @@
             write(out_solbal_yr+n,*) 'canl:     kg   solute mass loaded to groundwater from canal seepage'
             write(out_solbal_yr+n,*) 'fpln:     kg   solute mass in floodplain exchange'
             write(out_solbal_yr+n,*)
-            sol_hdr_yr = [character(len=20) :: "  year","delm","rech","gwsw","swgw","satx","soil","advn","disp",  &
-                "rcti","rcto","minl","sorb","ppag","ppex","tile","resv","wetl","canl","fpln"]
-            write(out_solbal_yr+n,120) (sol_hdr_yr(j),j=1,20)
+            sol_hdr_yr = (/"  year","delm","rech","gwsw","swgw","satx","soil","advn","disp","rctn", &
+                           "sorb","ppag","ppex","tile","resv","wetl","canl","fpln"/)
+            write(out_solbal_yr+n,120) (sol_hdr_yr(j),j=1,18)
             !zero out yearly arrays
             sol_grid_chng_yr(n) = 0.
             sol_grid_rech_yr(n) = 0.
@@ -2183,9 +2069,7 @@
             sol_grid_satx_yr(n) = 0.
             sol_grid_advn_yr(n) = 0.
             sol_grid_disp_yr(n) = 0.
-            sol_grid_rcti_yr(n) = 0.
-            sol_grid_rcto_yr(n) = 0.
-            sol_grid_minl_yr(n) = 0.
+            sol_grid_rctn_yr(n) = 0.
             sol_grid_sorb_yr(n) = 0.
             sol_grid_ppag_yr(n) = 0.
             sol_grid_ppex_yr(n) = 0.
@@ -2215,9 +2099,7 @@
             write(out_solbal_aa+n,*) 'soil:      kg   solute mass loaded to HRU soil profiles'
             write(out_solbal_aa+n,*) 'advn:      kg   solute mass transported by advection'
             write(out_solbal_aa+n,*) 'disp:      kg   solute mass transported by dispersion'
-            write(out_solbal_aa+n,*) 'rcti:      kg   solute mass produced by kinetic reaction'
-            write(out_solbal_aa+n,*) 'rcto:      kg   solute mass consumed by kinetic reaction'
-            write(out_solbal_aa+n,*) 'minl:      kg   solute mass added by mineral dissolution' 
+            write(out_solbal_aa+n,*) 'rctn:      kg   solute mass removed by denitrification'
             write(out_solbal_aa+n,*) 'sorb:      kg   solute mass removed via sorption'
             write(out_solbal_aa+n,*) 'ppag:      kg   solute mass removed by groundwater pumping for irrigation'
             write(out_solbal_aa+n,*) 'ppex:      kg   solute mass removed by groundwater pumping specified by user'
@@ -2227,9 +2109,9 @@
             write(out_solbal_aa+n,*) 'canl:      kg   solute mass loaded to groundwater from canal seepage'
             write(out_solbal_aa+n,*) 'fpln:      kg   solute mass in floodplain exchange'
             write(out_solbal_aa+n,*)
-            sol_hdr_aa = [character(len=20) :: "  year","delm","rech","gwsw","swgw","satx","soil","advn","disp",  &
-                "rcti","rcto","minl","sorb","ppag","ppex","tile","resv","wetl","canl","fpln"]
-            write(out_solbal_aa+n,120) (sol_hdr_aa(j),j=1,20)
+            sol_hdr_aa = (/"  year","delm","rech","gwsw","swgw","satx","soil","advn","disp","rctn", &
+                               "sorb","ppag","ppex","tile","resv","wetl","canl","fpln"/)
+            write(out_solbal_aa+n,120) (sol_hdr_aa(j),j=1,18)
             !zero out yearly arrays
             sol_grid_chng_tt(n) = 0.
             sol_grid_rech_tt(n) = 0.
@@ -2238,9 +2120,7 @@
             sol_grid_satx_tt(n) = 0.
             sol_grid_advn_tt(n) = 0.
             sol_grid_disp_tt(n) = 0.
-            sol_grid_rcti_tt(n) = 0.
-            sol_grid_rcto_tt(n) = 0.
-            sol_grid_minl_tt(n) = 0.
+            sol_grid_rctn_tt(n) = 0.
             sol_grid_sorb_tt(n) = 0.
             sol_grid_ppag_tt(n) = 0.
             sol_grid_ppex_tt(n) = 0.
@@ -2289,12 +2169,12 @@
       enddo
       
       !set solute mass for each grid cell
-      if (gw_solute_flag == 1) then
+      if(gw_solute_flag) then
         do i=1,ncell
           if(gw_state(i)%stat.gt.0) then
             if(gw_state(i)%head > gw_state(i)%botm) then
               gw_cell_volume = gw_state(i)%area * (gw_state(i)%head-gw_state(i)%botm) * gw_state(i)%spyd !m3 of groundwater
-            else
+						else
               gw_cell_volume = 0.
             endif
             do s=1,gw_nsolute !loop through solutes
@@ -2323,7 +2203,7 @@
         write(out_gwheads,101) (gw_state(i)%head,i=1,ncell)
       endif
       write(out_gwheads,*)
-      if (gw_solute_flag == 1) then
+      if(gw_solute_flag) then
         open(out_gwconc,file='gwflow_state_conc')
         write(out_gwconc,*) 'Initial concentration values (mg/L)'
         do s=1,gw_nsolute !loop through the solutes
@@ -2357,7 +2237,7 @@
       write(out_head_yr,*)
       
       !prepare output file and arrays for monthly and annual average solute concentration
-      if (gw_solute_flag == 1) then
+      if(gw_solute_flag) then
         write(out_gw,*) '          prepare output files for monthly and annual average solute conc.'
         open(out_conc_mo,file='gwflow_state_conc_mo')
         open(out_conc_yr,file='gwflow_state_conc_yr')
@@ -2369,8 +2249,8 @@
       
       
       !read in monthly streamflow data (if available)
-      inquire(file='gwflow.streamobs',exist=i_exist)
-      if (stream_obs == 1) then
+      inquire(file='gwflow.streamobs',exist=stream_obs)
+      if(stream_obs) then
         open(in_str_obs,file='gwflow.streamobs')
         open(out_strobs,file='gwflow_state_obs_flow')
         write(out_strobs,*) 'Channels: observed vs. simulated monthly values'
@@ -2415,8 +2295,7 @@
       write(out_hyd_sep,*) 'chan_satexsw:  channel flow contributed from saturation excess runoff' 
       write(out_hyd_sep,*) 'chan_tile:     channel flow contributed from tile drain flow' 
       write(out_hyd_sep,*)
-      hydsep_hdr = [character(len=10) :: "  year","   day","channel","chan_surf","chan_lat","chan_gwsw","chan_swgw",  &
-               "chan_satexgw","chan_satexsw","chan_tile"]
+      hydsep_hdr = (/"  year","   day","channel","chan_surf","chan_lat","chan_gwsw","chan_swgw","chan_satexgw","chan_satexsw","chan_tile"/)
       write(out_hyd_sep,121) (hydsep_hdr(j),j=1,10)      
       
       !gwflow record file (skip line)
@@ -2429,12 +2308,10 @@
       
        
 100   format(i6,i6,10(f10.2))
-!output files for all cells
-!101   format(<out_cols>(f12.4))
-!102   format(<out_cols>(i4))
-101   format(f12.4)
-102   format(i4)
-    !other formats
+      !output files for all cells
+101   format(<out_cols>(f12.4))
+102   format(<out_cols>(i4))
+		  !other formats
 103   format(10000(i8))
 111   format(1x,a, 5x,"Time",2x,i2,":",i2,":",i2)
 119   format(4x,a8,a8,a10,a16,a19,50(a13))

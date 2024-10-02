@@ -41,7 +41,7 @@
           if (eof < 0) exit
           imax = imax + 1
         end do
-        imax = max (imax, mcha_sp)
+        imax=max(imax, mcha_sp)
           
         allocate (ch_sur(imax))
         rewind (107)
@@ -54,6 +54,7 @@
 
         db_mx%ch_surf = imax
         
+                !db_mx%ch_surf
         do ise = 1, imax
           read (107,*,iostat=eof) i, namedum, nspu
           if (eof < 0) exit

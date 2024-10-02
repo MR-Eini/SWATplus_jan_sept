@@ -18,11 +18,9 @@
       use ch_salt_module, only : chsalt_d
       use gwflow_module, only : gw_solute_flag,gwsol_ss,ncell,gw_state,gwsol_state
 
-      implicit none
-      
-      integer :: i,m,ob_ctr,num_days,jj
+      integer :: i,m,ob_ctr,num_days
       real :: saltsum,hru_area_m2,sol_thick,soil_volume,soil_mass, &
-              aquifer_thickness,aquifer_volume,aquifer_mass, sub_ha, soil_thick
+              aquifer_thickness,aquifer_volume,aquifer_mass, sub_ha
       real :: sum_conc,avg_conc(cs_db%num_salts),sum_load,avg_load(11)
       real :: salt_basin(28)
 
@@ -41,7 +39,7 @@
       !groundwater salt loading to channels
       saltsum = 0.
       if(bsn_cc%gwflow == 1) then !gwflow is active; loop through cells
-        if (gw_solute_flag == 1) then
+        if(gw_solute_flag) then
           do i=1,ncell
             do m=1,cs_db%num_salts
               saltsum = saltsum + (gwsol_ss(i)%solute(2+m)%gwsw * (-1) / 1000.) !kg  
@@ -91,7 +89,7 @@
       !tile drain salt loading to stream
       saltsum = 0.
       if(bsn_cc%gwflow == 1) then !gwflow is active (add to tile drainage from HRU soils)
-        if (gw_solute_flag == 1) then
+        if(gw_solute_flag) then
           do i=1,ncell
             do m=1,cs_db%num_salts
               saltsum = saltsum + (gwsol_ss(i)%solute(2+m)%tile * (-1) / 1000.) !kg  
@@ -239,7 +237,7 @@
       !recharge to aquifer
       saltsum = 0.
       if(bsn_cc%gwflow == 1) then !gwflow is active (add to tile drainage from HRU soils)
-        if (gw_solute_flag == 1) then
+        if(gw_solute_flag) then
           do i=1,ncell
             do m=1,cs_db%num_salts
               saltsum = saltsum + (gwsol_ss(i)%solute(2+m)%rech / 1000.) !kg  
@@ -277,21 +275,11 @@
 
       !solid --> dissolved (aquifer)
       saltsum = 0.
-      if(bsn_cc%gwflow == 1) then !gwflow is active
-        if(gw_solute_flag == 1) then
-          do i=1,ncell
-            do m=1,cs_db%num_salts  
-              saltsum = saltsum + (gwsol_ss(i)%solute(2+m)%minl / 1000.) !kg 
-            enddo
-          enddo
-        endif 
-      else
-        ob_ctr = sp_ob1%aqu !first aquifer object
-        do i=1,sp_ob%aqu
-          saltsum = saltsum + asaltb_d(i)%salt(1)%diss !kg
-          ob_ctr = ob_ctr + 1
-        enddo
-      endif
+      ob_ctr = sp_ob1%aqu !first aquifer object
+      do i=1,sp_ob%aqu
+        saltsum = saltsum + asaltb_d(i)%salt(1)%diss !kg
+        ob_ctr = ob_ctr + 1
+      enddo
       salt_basin(24) = saltsum
 
       !total soil salt (dissolved)
@@ -323,7 +311,7 @@
       !total groundwater salt (dissolved)
       saltsum = 0.
       if(bsn_cc%gwflow == 1) then !gwflow is active
-        if (gw_solute_flag == 1) then
+        if(gw_solute_flag) then
           do i=1,ncell
             if(gw_state(i)%stat > 0) then
               do m=1,cs_db%num_salts
@@ -475,15 +463,12 @@
         enddo
       enddo
       
-      !if gwflow active: zero out daily cell values for recharge and chemical reactions (others are zeroed out in gwflow_simulate)
+      !if gwflow active: zero out daily cell values for recharge (others are zeroed out in gwflow_simulate)
       if(bsn_cc%gwflow == 1) then
-        if (gw_solute_flag == 1) then
+        if(gw_solute_flag) then
           do i=1,ncell
             do m=1,cs_db%num_salts
               gwsol_ss(i)%solute(2+m)%rech = 0.
-              gwsol_ss(i)%solute(2+m)%rcti = 0.
-              gwsol_ss(i)%solute(2+m)%rcto = 0.
-              gwsol_ss(i)%solute(2+m)%minl = 0.
 					  enddo
           enddo
         endif

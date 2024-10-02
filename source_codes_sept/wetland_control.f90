@@ -24,15 +24,15 @@
       integer :: j                    !none          |counter
       real :: x1                      !              |
       real :: wet_h                   !              |
-      real :: wet_h1                  !              | 
+      real :: wet_h1                  !              |  
+      integer :: ihyd                 !none          |counter
       integer :: ised                 !none          |counter
       integer :: irel                 !              |
+      integer :: inut                 !none          |counter
       integer :: icon                 !none          |counter: identifies parameter list in cs_res (rtb cs)
       integer :: ires = 0
       integer :: j1
       integer :: ii                   !none          |sub daily time step counter
-      integer :: ihyd                 !none          |counter  !Jaehak 2024
-      integer :: isched                !none          |counter  !Jaehak 2024
       real :: wet_fr = 0.
       real :: pvol_m3
       real :: evol_m3
@@ -44,19 +44,9 @@
       ihyd = wet_dat(ires)%hyd
       ised = wet_dat(ires)%sed
       irel = wet_dat(ires)%release
-      wsa1 = hru(j)%area_ha * 10.
-      isched = hru(j)%mgt_ops
-      wet_wat_d(j)%area_ha = hru(j)%area_ha
-      
+      wsa1 = hru(j)%area_ha * 10. 
       !! zero outgoing flow 
-      ht2 = resz
-      
-      
-      !! set water body pointer to res
-      wbody => wet(j)
-      wbody_wb => wet_wat_d(j)
-      wbody_prm => wet_prm(j)
-      
+      ht2 = resz 
 
       !! initialize variables for wetland daily simulation
       hru(j)%water_seep = 0.
@@ -70,41 +60,49 @@
       
       !! add irrigation water to the paddy/wetland storage 
       wet(j)%flo =  wet(j)%flo + irrig(j)%applied * wsa1 !m3
-      wet(j)%no3 = wet(j)%no3 + irrig(j)%no3 * irrig(j)%applied * wsa1 * 0.001 !kg
+      
+      !! done in et_act to maintain balance -- subtract evaporation  - mm*ha*10.=m3
+      !wet_wat_d(j)%evap = pet_day * wet_hyd(ihyd)%evrsv * wsa1 !m3
+      !wet_wat_d(j)%evap = min(wet_wat_d(j)%evap, wet(j)%flo)
+      !wet(j)%flo = wet(j)%flo - wet_wat_d(j)%evap 
+      !hru(j)%water_evap = wet_wat_d(j)%evap / wsa1 !mm
+      !wet(j)%dep = wet(j)%dep - hru(j)%water_evap !mm
+      
       wet_wat_d(j)%area_ha = 0.
       if (wet(j)%flo > 0.) then  !paddy is assumed flat
         !! update wetland surface area - solve quadratic to find new depth
-        x1 = wet_hyd(j)%bcoef ** 2 + 4. * wet_hyd(j)%ccoef * (1. - wet(j)%flo / (wet_ob(j)%pvol + 1.e-9))
+        x1 = wet_hyd(ihyd)%bcoef ** 2 + 4. * wet_hyd(ihyd)%ccoef * (1. - wet(j)%flo / (wet_ob(j)%pvol + 1.e-9))
         if (x1 < 1.e-6) then
           wet_h = 0.
         else
-          wet_h1 = (-wet_hyd(j)%bcoef - sqrt(x1)) / (2. * wet_hyd(j)%ccoef + 1.e-9)
-          wet_h = wet_h1 + wet_hyd(j)%bcoef
+          wet_h1 = (-wet_hyd(ihyd)%bcoef - sqrt(x1)) / (2. * wet_hyd(ihyd)%ccoef + 1.e-9)
+          wet_h = wet_h1 + wet_hyd(ihyd)%bcoef
         end if
-        wet_fr = (1. + wet_hyd(j)%acoef * wet_h)
+        wet_fr = (1. + wet_hyd(ihyd)%acoef * wet_h)
         wet_fr = min(wet_fr,1.)
         wet_fr = max(wet_fr,0.01)
         
         wet_wat_d(j)%area_ha = hru(j)%area_ha * wet_fr
 
         !calculate seepage and groundwater interactions
-        if(bsn_cc%gwflow == 1) then !rtb gwflow
+        if(bsn_cc%gwflow) then !rtb gwflow
           call gwflow_wetl(j)
         else !original seepage calculations
           !! infiltration of the standing water to the topsoil layer. 
           !! Any excess infiltration volume estimated here is reverted (back to waterbody) in swr_satexcess.
+          !! 
           wet_wat_d(j)%seep = min(wet(j)%flo, hru(j)%wet_hc * 24. * wsa1) !m3   
         end if !check for gwflow
         
         ! check potential percolation rate to refine daily seepage rate Jaehak 2022
         ! actual soil moisture content is updated in percmain
         volseep = wet_wat_d(j)%seep / wsa1 !mm
-        if (volseep > 0.1) then
+        if (volseep>0.1) then
           do j1 = 1, soil(j)%nly
             swst(j1) = soil(j)%phys(j1)%st + volseep
-            if (swst(j1) > soil(j)%phys(j1)%ul * 0.9) then !oversaturated Jaehak 2022
-              volex = swst(j1) - soil(j)%phys(j1)%ul * 0.9  !excess water. soil is assumed to remain saturated Jaehak 2022
-              volseep = min(volex, soil(j)%phys(j1)%k * 24.)
+            if (swst(j1)>soil(j)%phys(j1)%ul*0.9) then !oversaturated Jaehak 2022
+              volex = swst(j1) - soil(j)%phys(j1)%ul*0.9  !excess water. soil is assumed to remain saturated Jaehak 2022
+              volseep = min(volex, soil(j)%phys(j1)%k*24.)
               swst(j1) = swst(j1) - volseep
             else
               volseep = 0
@@ -130,11 +128,7 @@
         hru(j)%water_seep = wet_wat_d(j)%seep / wsa1   !mm=m3/(10*ha)
       
         ! calculate dissolved nutrient infiltration Jaehak 2022
-        if (wet_wat_d(j)%seep + wet(j)%flo > 0.01)then
-          seep_rto = wet_wat_d(j)%seep / (wet_wat_d(j)%seep + wet(j)%flo)
-        else 
-          seep_rto = 0.
-        endif
+        seep_rto = wet_wat_d(j)%seep / (wet_wat_d(j)%seep + wet(j)%flo)
         soil1(j)%mn(1)%no3 = soil1(j)%mn(1)%no3 + wet(j)%no3 * seep_rto / hru(j)%area_ha !kg/ha
         soil1(j)%mn(1)%nh4 = soil1(j)%mn(1)%nh4 + wet(j)%nh3 * seep_rto / hru(j)%area_ha !kg/ha
         soil1(j)%mp(1)%act = soil1(j)%mp(1)%act + wet(j)%solp * seep_rto / hru(j)%area_ha !kg/ha
@@ -165,7 +159,6 @@
         pvol_m3 = wet_ob(j)%pvol
         evol_m3 = wet_ob(j)%evol
         !if (wet_ob(j)%area_ha > 1.e-6) then
-
         if (hru(j)%area_ha > 1.e-6) then
           !dep = wbody%flo / wet_ob(j)%area_ha / 10000.     !m = m3 / ha / 10000m2/ha
           dep = wet(j)%flo / wsa1 / 1000.    !m 
@@ -190,28 +183,29 @@
         wet(j)%flo =  wet(j)%flo - ht2%flo
         surfq(j) = ht2%flo / wsa1 !mm
         
-        if (time%step > 1) then
+        if (time%step > 0) then
           do ii = 1, time%step
             !! daily total runoff
             hhsurfq(j,ii) = surfq(j) / real(time%step)
           end do
         end if
+ 
+      !end if
       
       wet_ob(j)%depth = wet(j)%flo / wsa1 / 1000. !m                       
        
       !! compute sediment deposition
-      call res_sediment
-      wet(j)%sed = wbody%sed !t
+      call res_sediment (ised)
+      
+      !!! subtract sediment leaving from reservoir
+      !wet(j)%sed = wet(j)%sed - ht2%sed
+      !wet(j)%sil = wet(j)%sil - ht2%sil
+      !wet(j)%cla = wet(j)%cla - ht2%cla
       
       !! perform reservoir nutrient balance
-      call res_nutrient (j)
+      inut = wet_dat(ires)%nut
+      call res_nutrient (inut, j)
       
-      wet(j)%no3 = wbody%no3  
-      wet(j)%nh3 = wbody%nh3
-      wet(j)%orgn =wbody%orgn
-      wet(j)%sedp = wbody%sedp 
-      wet(j)%solp = wbody%solp 
-
       !! perform salt ion constituent balance
       call wet_salt(icmd,j)
       
@@ -220,7 +214,7 @@
       call wet_cs(icmd,icon,j)
 
       ! calculate sediment/nutrient yield when wetlands are flushed 
-      if (dep_init < 0.0001 .and. ht2%flo > 0.) then 
+      if (dep_init<0.0001 .and. ht2%flo>0.) then 
         call ero_cfactor 
         qp_cms = bsn_prm%prf / 6578.6 * hru(j)%area_ha * surfq(j) / tconc(j) / 35.3
         cklsp(j) = usle_cfac(j) * hru(j)%lumv%usle_mult
@@ -237,6 +231,13 @@
         sedppm=0
         no3ppm=0
       endif
+      
+
+  
+      !write(100100,'(3(I6,","),11(f10.1,","))') time%yrc,time%mo,time%day_mo,w%precip,irrig(j)%applied,hru(j)%water_seep,&
+      !  weir_hgt*1000,wet(j)%flo/wsa1,ht2%flo/wsa1,soil(j)%sw,wet(j)%sed*1000,ht2%sed*1000,no3ppm,ht2%no3    
+      !write(*,'(3(I6),11(f10.1))') time%yrc,time%mo,time%day_mo,w%precip,irrig(j)%applied,hru(j)%water_seep,&
+      !  weir_hgt*1000,wet(j)%flo/wsa1,ht2%flo/wsa1,soil(j)%sw,wet(j)%sed*1000,ht2%sed*1000,wet(j)%no3,ht2%no3    
       
       !! perform reservoir pesticide transformations
       !call res_pest (ires)
@@ -264,8 +265,10 @@
       
       !! set inflow and outflow variables for reservoir_output
       if (time%yrs > pco%nyskip) then
-        wet_in_d(j) = wet_in_d(j) + ht1 
+        wet_in_d(j) = ht1 
         wet_out_d(j) = ht2
+        !wet_in_d(j)%flo = wet(j)%flo / 10000.   !m^3 -> ha-m
+        !wet_out_d(j)%flo = wet(j)%flo / 10000.  !m^3 -> ha-m
       end if  
 
       return

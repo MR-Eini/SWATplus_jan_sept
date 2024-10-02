@@ -4,7 +4,6 @@
       use hru_module
       use hydrograph_module
       use conditional_module
-      use reservoir_module
       
       implicit none 
 
@@ -37,22 +36,6 @@
             end select
           end if
         
-        !! reservoir demand
-        case ("res")
-          !! use average daily or a flow control decision table
-          if (wallo(iwallo)%dmd(idmd)%withdr == "ave_day") then
-            wallod_out(iwallo)%dmd(idmd)%dmd_tot = wallo(iwallo)%dmd(idmd)%amount  
-          else
-            !! use decision table for flow control - water allocation
-            id = wallo(iwallo)%dmd(idmd)%rec_num
-            d_tbl => dtbl_flo(id)
-            j = 0
-            icmd = res_ob(j)%ob
-            call conditions (j, id)
-            call actions (j, icmd, id)
-            wallod_out(iwallo)%dmd(idmd)%dmd_tot = dmd_m3
-          end if
-
         !! diversion demand
         case ("divert")
           !! use average daily or a flow control decision table
@@ -75,12 +58,7 @@
           j = wallo(iwallo)%dmd(idmd)%ob_num
           !! if there is demand, use amount from water allocation file
           if (irrig(j)%demand > 0.) then
-            if (hru(j)%irr_hmax > 0.) then
-              wallod_out(iwallo)%dmd(idmd)%dmd_tot = irrig(j)%demand !m3 Irrigation demand based on paddy/wetland target ponding depth Jaehak 2023
-            else
-              wallod_out(iwallo)%dmd(idmd)%dmd_tot = wallo(iwallo)%dmd(idmd)%amount * hru(j)%area_ha * 10. !m3 = mm * ha * 10.
-            endif
-
+            wallod_out(iwallo)%dmd(idmd)%dmd_tot = wallo(iwallo)%dmd(idmd)%amount * hru(j)%area_ha * 10. !m3 = mm * ha * 10.
           else
             wallod_out(iwallo)%dmd(idmd)%dmd_tot = 0.
           end if

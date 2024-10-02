@@ -114,13 +114,12 @@
       if (comp_light == "n") then
         !! calculate photosynthetically active radiation for each plant
         do ipl = 1, pcom(j)%npl
-        if (pcom(j)%plcur(ipl)%idorm == "n" .and. pcom(j)%plcur(ipl)%gro        & 
-                                                              == "y")then
-          idp = pcom(j)%plcur(ipl)%idplt
-          pl_db => pldb(idp)
-          par(ip) = .5 * w%solrad * (1. - Exp(-pldb(idp)%ext_coef *        &    
-                (pcom(j)%plg(ipl)%lai + .05)))
-        end if   
+          if (pcom(j)%plcur(ipl)%idorm == "n" .and. pcom(j)%plcur(ipl)%gro == "y")then
+            idp = pcom(j)%plcur(ipl)%idplt
+            pl_db => pldb(idp)
+            par(ipl) = (1. - Exp(-pldb(idp)%ext_coef * (pcom(j)%plg(ipl)%lai + .05)))
+            par(ipl) = .5 * w%solrad * (1. - Exp(-pldb(idp)%ext_coef * (pcom(j)%plg(ipl)%lai + .05)))
+          end if   
         end do                                                     
 
       else
@@ -129,12 +128,10 @@
       !! calculate photosynthetically active radiation during growth period
       if (npl_gro == 1) then
         !! calculate photosynthetically active radiation for one plant
-        if (pcom(j)%plcur(ip)%idorm == "n" .and. pcom(j)%plcur(ip)%gro        & 
-                                                              == "y")then
+        if (pcom(j)%plcur(ip)%idorm == "n" .and. pcom(j)%plcur(ip)%gro == "y")then
           idp = pcom(j)%plcur(ip)%idplt
           pl_db => pldb(idp)
-          par(ip) = .5 * w%solrad * (1. - Exp(-pldb(idp)%ext_coef *        &    
-                (pcom(j)%plg(ip)%lai + .05)))
+          par(ip) = .5 * w%solrad * (1. - Exp(-pldb(idp)%ext_coef * (pcom(j)%plg(ip)%lai + .05)))
         end if
       else if (npl_gro > 1) then
         !! calculate photosynthetically active radiation for multiple plants
@@ -146,8 +143,8 @@
               if (x1 > 0.) then
                 idp = pcom(j)%plcur(ipl)%idplt
                 pl_db => pldb(idp)
-                translt(ipl) = translt(ipl) + x1 / (pcom(j)%plg(ipl)%cht + 1.e-6) *   & 
-                         pcom(j)%plg(ipl)%lai * (-pldb(idp)%ext_coef)
+                translt(ipl) = translt(ipl) + x1 / (pcom(j)%plg(ipl)%cht + 1.e-6) *         & 
+                                            pcom(j)%plg(ipl)%lai * (-pldb(idp)%ext_coef)
               end if
             end do
           end do

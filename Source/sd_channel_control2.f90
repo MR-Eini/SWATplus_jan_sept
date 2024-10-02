@@ -55,7 +55,8 @@
       !call variable storage coefficient flood routing method
       call ch_rtmusk
               
-      call sd_channel_sediment (time%step)
+      !call sd_channel_sediment (time%step)   
+      call sd_channel_sediment3
         
       !! use modified qual-2e routines
       ht3 = ht1
@@ -103,6 +104,7 @@
         call actions (ich, icmd, id)
       end if
  
+      ob(icmd)%hd(1) = ht2
       !! output channel organic-mineral
       ch_out_d(ich) = ob(icmd)%hd(1)                       !set outflow om hydrograph
       ch_out_d(ich)%flo = ob(icmd)%hd(1)%flo / 86400.      !m3 -> m3/s

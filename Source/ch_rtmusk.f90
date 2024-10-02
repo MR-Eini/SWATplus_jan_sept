@@ -53,6 +53,7 @@
       real :: trans_loss = 0.   !m^3           |transmission losses during day
       real :: ev                !m^3           |evaporation during time step
       real :: evap = 0.         !m^3           |evaporation losses during day
+      real :: precip = 0.       !m^3           |precip during routing time step
       real :: rto
       real :: rto1
       real :: rto_w
@@ -65,20 +66,24 @@
       real :: sum_inflo, sum_outflo
       real :: dep
       real :: evol_m3, pvol_m3
-      real :: wet_evol
+      real :: wet_evol 
+      real :: bf_flow               !m3/s           |bankfull flow rate * adjustment factor
+      real :: pk_rto                !ratio          |peak to mean flow rate ratio
 
       jrch = isdch
       jhyd = sd_dat(jrch)%hyd
       
       qinday = 0
       qoutday = 0
-      ob(icmd)%hd(1) = hz
+      ht2 = hz
       ob(icmd)%hyd_flo = 0.
       hyd_rad = 0.
       trav_time = 0.
       flo_dep = 0.
       trans_loss = 0.
       evap = 0.
+      ch_wat_d(jrch)%evap = 0.
+      ch_wat_d(jrch)%seep = 0.
       
       !***jga
       !ob(icmd)%tsin = (/0., 800., 2000., 4200., 5200., 4400., 3200., 2500., 2000., 1500., 1000., 700., 400.,     &
@@ -90,7 +95,6 @@
       wet_evol = 0.
       do ihru = 1, sd_ch(jrch)%fp%hru_tot
         iihru = sd_ch(jrch)%fp%hru(ihru)
-        !wet(iihru)%flo = wet_ob(iihru)%evol     !***jga test with wetlands starting at emergency
         wet_stor(jrch) = wet_stor(jrch) + wet(iihru)
         wet_evol = wet_evol + wet_ob(iihru)%evol
       end do
@@ -99,6 +103,11 @@
       fp_stor_init = fp_stor(jrch)%flo
       tot_stor_init = ch_stor_init + fp_stor_init
       
+      !! set for daily time step
+      if (time%step == 1) then
+        sd_ch(jrch)%msk%nsteps = 1
+        sd_ch(jrch)%msk%substeps = 1
+      end if
       irtstep = 1
       isubstep = 0
       dts = time%dtm / sd_ch(jrch)%msk%substeps * 60.
@@ -106,33 +115,28 @@
       
       !! subdaily time step
       do ii = 1, sd_ch(jrch)%msk%nsteps
-
         !! water entering reach during time step - substeps for stability
         isubstep = isubstep + 1
         if (isubstep > sd_ch(jrch)%msk%substeps) then
           irtstep = irtstep + 1
           isubstep = 1
         end if
-        inflo = ob(icmd)%tsin(irtstep) / sd_ch(jrch)%msk%substeps
-        inflo_rate = inflo / dts 
-
-        !! interpolate rating curve using inflow rates
-        icha = jrch
-        call rcurv_interp_flo (icha, inflo_rate)
-        ch_rcurv(jrch)%in2 = rcurv
-        
-        !! save variables at each routing time step for sediment routing
-        if (isubstep == 1 .and. rcurv%wet_perim > 1.e-6) then
-          hyd_rad(irtstep) = rcurv%xsec_area / rcurv%wet_perim
-          trav_time(irtstep) = rcurv%ttime
-          flo_dep(irtstep) = rcurv%dep
-        end if
         
         !! add inflow to total storage
         if (ht1%flo > 1.e-6) then
+          !! subdaily inflow
+          inflo = ob(icmd)%tsin(irtstep) / sd_ch(jrch)%msk%substeps
           rto = inflo / ht1%flo
+          rto = Max(0., rto)
+          rto = Min(1., rto)
           tot_stor(jrch) = tot_stor(jrch) + rto * ht1
-        end if
+        end if    ! ht1%flo > 1.e-6
+        
+        !! interpolate rating curve using inflow rates
+        icha = jrch
+        inflo_rate = inflo / 86400.
+        call rcurv_interp_flo (icha, inflo_rate)
+        ch_rcurv(jrch)%in2 = rcurv
         
         !! if no water in channel - skip routing and set rating curves to zero
         if (tot_stor(jrch)%flo < 1.e-6) then
@@ -141,25 +145,24 @@
           sd_ch(jrch)%in1_vol = 0.
           sd_ch(jrch)%out1_vol = 0.
         else
-          !***jga
-          !sd_ch(jrch)%msk%c1 = 0.00     !0.1358
-          !sd_ch(jrch)%msk%c2 = 0.2      !0.481484
-          !sd_ch(jrch)%msk%c3 = 0.8      !0.382716
+          if (bsn_cc%rte == 1) then
           !! Muskingum flood routing method
-          outflo = sd_ch(jrch)%msk%c1 * inflo + sd_ch(jrch)%msk%c2 * sd_ch(jrch)%in1_vol +     &
+            outflo = sd_ch(jrch)%msk%c1 * inflo + sd_ch(jrch)%msk%c2 * sd_ch(jrch)%in1_vol +     &
                                                 sd_ch(jrch)%msk%c3 * sd_ch(jrch)%out1_vol
-	      outflo = Min (outflo, tot_stor(jrch)%flo)
-          outflo = Max (outflo, 0.)
+	        outflo = Min (outflo, tot_stor(jrch)%flo)
+            outflo = Max (outflo, 0.)
                
-          !! save inflow/outflow volumes for next time step (and day) for Muskingum
-          sd_ch(jrch)%in1_vol = inflo
-          sd_ch(jrch)%out1_vol = outflo
+            !! save inflow/outflow volumes for next time step (and day) for Muskingum
+            sd_ch(jrch)%in1_vol = inflo
+            sd_ch(jrch)%out1_vol = outflo
+          else
 
-          !! Variable Storage Coefficent method - sc=2*dt/(2*ttime+dt) - ttime=(in2+out1)/2
-          scoef = 2. * dthr / (ch_rcurv(jrch)%in2%ttime + ch_rcurv(jrch)%out1%ttime + dthr)
-          !scoef = Min (scoef, 1.)
-          !outflo = scoef * tot_stor(jrch)%flo
-        
+            !! Variable Storage Coefficent method - sc=2*dt/(2*ttime+dt) - ttime=(in2+out1)/2
+            scoef = dthr / (ch_rcurv(jrch)%in2%ttime + ch_rcurv(jrch)%out1%ttime + dthr)
+            scoef = Min (scoef, 1.)
+            outflo = scoef * tot_stor(jrch)%flo
+          end if
+          
           !! compute outflow rating curve for next time step
           outflo_rate = outflo / dts      !convert to cms
           call rcurv_interp_flo (jrch, outflo_rate)
@@ -168,7 +171,7 @@
           !! add outflow to daily hydrograph and subdaily flow
           rto = outflo / tot_stor(jrch)%flo
           rto = Min (1., rto)
-          ob(icmd)%hd(1) = ob(icmd)%hd(1) + rto * tot_stor(jrch)
+          ht2 = ht2 + rto * tot_stor(jrch)
           ob(icmd)%hyd_flo(1,irtstep) = ob(icmd)%hyd_flo(1,irtstep) + outflo
           !! subtract outflow from total storage
           tot_stor(jrch) = (1. - rto) * tot_stor(jrch)
@@ -188,74 +191,46 @@
             fp_stor(jrch) = hz
           end if
         
-          !! if flood plain link - fill wetlands to emergency if flood plain storage available
-          if (bsn_cc%i_fpwet == 2) then
-            do ihru = 1, sd_ch(jrch)%fp%hru_tot
-              iihru = sd_ch(jrch)%fp%hru(ihru)
-              ires= hru(iihru)%dbs%surf_stor
-              !! wetland storage can't go above emergency in release dtbl - it becomes flood plain storage
-              if (ires > 0 .and. fp_stor(jrch)%flo > 0.) then
-                if (fp_stor(jrch)%flo > (wet_ob(iihru)%evol - wet(iihru)%flo)) then
-                  rto = (wet_ob(iihru)%evol - wet(iihru)%flo) / fp_stor(jrch)%flo
-                  if (rto > 1.e-6) then
-                    wet(iihru) = wet(iihru) + rto * fp_stor(jrch)
-                    rto1 = 1. - rto
-                    fp_stor(jrch) = rto1 * fp_stor(jrch)
-                  end if
-                else
-                  wet(iihru) = wet(iihru) + fp_stor(jrch)
-                  fp_stor(jrch) = hz
-                end if
-              end if
-            end do
-          end if
-        
           tot_stor(jrch) = ch_stor(jrch) + fp_stor(jrch)
           
         end if  ! tot_stor(jrch)%flo < 1.e-6
 
       end do    ! end of sub-daily loop
       
-      !! calculate transmission losses
-      if (ob(icmd)%hd(1)%flo > 1.e-6) then
-        !! mm/hr * km * m * 24 / nsteps = m3
+      !! compute water balance - evap and seep
+      !! calculate transmission losses (seepage)
+      if (ch_stor(jrch)%flo > 1.e-6) then
+        !! mm/hr * km * m * 24. = m3
         trans_loss = sd_ch(jrch)%chk * sd_ch(jrch)%chl * rcurv%wet_perim * 24.
-        trans_loss = Min(trans_loss, tot_stor(jrch)%flo)
+        trans_loss = sd_ch(jrch)%chk * sd_ch(jrch)%chl * sd_ch(jrch)%chw * 24.
+        trans_loss = Min(trans_loss, ch_stor(jrch)%flo)
         !! subtract transmission loses from outflow
-        if (ob(icmd)%hd(1)%flo > trans_loss) then
-          rto = trans_loss / ob(icmd)%hd(1)%flo
-          ob(icmd)%hd(1) = (1. - rto) * ob(icmd)%hd(1)
-          ob(icmd)%hyd_flo(1,:) = (1. - rto) * ob(icmd)%hyd_flo(1,:)
-        else
-          ob(icmd)%hd(1) = hz
-          ob(icmd)%hyd_flo(1,:) = 0.
-        end if
+        rto = trans_loss / ch_stor(jrch)%flo
+        ch_stor(jrch) = (1. - rto) * ch_stor(jrch)
       end if
+      ch_wat_d(ich)%seep = trans_loss
 
       !! calculate evaporation losses
-      if (ob(icmd)%hd(1)%flo > 1.e-6) then
+      if (ch_stor(jrch)%flo > 1.e-6) then
         !! calculate width of channel at water level - flood plain evap calculated in wetlands
-        if (dep_flo <= sd_ch(jrch)%chd) then
-          topw = ch_rcurv(jrch)%out2%surf_area
-        else
+        !if (dep_flo <= sd_ch(jrch)%chd) then
+        !  topw = ch_rcurv(jrch)%out2%surf_area
+        !else
           topw = 1000. * sd_ch(jrch)%chl * sd_ch(jrch)%chw
-        end if
+        !end if
         iwst = ob(icmd)%wst
-        !! mm/day * m2 / (1000. * sd_ch(jrch)%msk%nsteps)
+        !! mm/day * m2 / 1000.
         evap = bsn_prm%evrch * wst(iwst)%weat%pet * topw / 1000.
-        if (evap < 0.) evap = 0.
-        if (ob(icmd)%hd(1)%flo > evap) then
-          rto = evap / outflo
-          ob(icmd)%hd(1) = (1. - rto) * ob(icmd)%hd(1)
-          ob(icmd)%hyd_flo(1,:) = (1. - rto) * ob(icmd)%hyd_flo(1,:)
-        else
-          ob(icmd)%hd(1) = hz
-          ob(icmd)%hyd_flo(1,:) = 0.
-        end if
+        evap = Min(evap, ch_stor(jrch)%flo)
+        rto = evap / ch_stor(jrch)%flo
+        ch_stor(jrch)%flo = (1. - rto) * ch_stor(jrch)%flo
       end if
+      ch_wat_d(ich)%evap = evap
+      
+      tot_stor(jrch) = ch_stor(jrch) + fp_stor(jrch)
 
       !! check water balance at end of day
-      sum_outflo = ob(icmd)%hd(1)%flo
+      sum_outflo = ht2%flo
       inout = sum_inflo - sum_outflo - trans_loss - evap
       !! total wetland volume at end of day
       wet_stor(jrch) = hz
@@ -265,10 +240,18 @@
       end do
       del_stor = (ch_stor(jrch)%flo - ch_stor_init) + (fp_stor(jrch)%flo - fp_stor_init) +          &
                                                     (wet_stor(jrch)%flo - wet_stor_init)
-      write (9911,100) time%mo, time%day_mo, time%yrc, sum_inflo, sum_outflo, trans_loss, evap,     &
-                        ch_stor_init, ch_stor(jrch)%flo, fp_stor_init, fp_stor(jrch)%flo,           &
-                        tot_stor_init, tot_stor(jrch)%flo, wet_stor_init, wet_stor(jrch)%flo
- 100  format (3i6,2x,12f12.1)
+      ch_fp_wb(jrch)%inflo = sum_inflo
+      ch_fp_wb(jrch)%outflo = sum_outflo
+      ch_fp_wb(jrch)%tl = trans_loss
+      ch_fp_wb(jrch)%ev = evap
+      ch_fp_wb(jrch)%ch_stor_init = ch_stor_init
+      ch_fp_wb(jrch)%ch_stor = ch_stor(jrch)%flo
+      ch_fp_wb(jrch)%fp_stor_init = fp_stor_init
+      ch_fp_wb(jrch)%fp_stor = fp_stor(jrch)%flo
+      ch_fp_wb(jrch)%tot_stor_init = tot_stor_init
+      ch_fp_wb(jrch)%tot_stor = tot_stor(jrch)%flo
+      ch_fp_wb(jrch)%wet_stor_init = wet_stor_init
+      ch_fp_wb(jrch)%wet_stor = wet_stor(jrch)%flo
       
       return
       end subroutine ch_rtmusk

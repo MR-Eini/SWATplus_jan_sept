@@ -13,6 +13,11 @@
       write (*,1234) date_time(2), date_time(3), date_time(1), date_time(5), date_time(6), date_time(7) 
       write (9003,1234) date_time(2), date_time(3), date_time(1), date_time(5), date_time(6), date_time(7) 
 1234  format(/,"  Date of Sim", 2x,i2,"/",i2,"/",i4, " Time",2x,i2,":",i2,":",i2)
+     
+      write (*,111) "reading from pet file              ", date_time(5), date_time(6), date_time(7)
+      write (9003,111) "reading from pet file              ", date_time(5), date_time(6), date_time(7)
+      call DATE_AND_TIME (b(1), b(2), b(3), date_time)
+      call cli_petmeas
       
       write (*,111) "reading from precipitation file    ", date_time(5), date_time(6), date_time(7)
       write (9003,111) "reading from precipitation file    ", date_time(5), date_time(6), date_time(7)

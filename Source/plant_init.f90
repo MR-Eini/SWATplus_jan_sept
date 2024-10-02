@@ -78,6 +78,9 @@
             deallocate (pcom(j)%plstr) 
             deallocate (pcom(j)%plcur) 
             deallocate (rsd1(j)%tot)
+            deallocate (rsd1(j)%meta)
+            deallocate (rsd1(j)%str)
+            deallocate (rsd1(j)%lignin)
           end if
         
         pcom(j)%npl = pcomdb(icom)%plants_com
@@ -99,6 +102,11 @@
         allocate (rsd1(j)%meta(ipl))
         allocate (rsd1(j)%str(ipl))
         allocate (rsd1(j)%lignin(ipl))
+        !! allocate water uptake by layer
+        do ipl = 1, pcom(j)%npl
+          allocate (pcom(j)%plcur(ipl)%uptake(soil(j)%nly))
+          pcom(j)%plcur(ipl)%uptake = 0.
+        end do
 
         pcom(j)%rsd_covfac = 0.
         cvm_com(j) = 0.
@@ -183,7 +191,7 @@
               end do
             end if
           
-            ! caculate planting day for winter annuals at end of dormancy
+            ! switched from starting hu at dormancy (daylength) to 0.15 hu (above) like summer annuals
             if (pldb(idp)%typ == "null" .or. pldb(idp)%typ == "null1") then
               if (wgn(iwgn)%lat > 0.) then
                 igrow = 1
@@ -289,6 +297,9 @@
           pl_mass(j)%tot(ipl)%m = pcomdb(icom)%pl(ipl)%bioms
           pcom(j)%plcur(ipl)%curyr_mat = int (pcomdb(icom)%pl(ipl)%fr_yrmat * float(pldb(idp)%mat_yrs))
           pcom(j)%plcur(ipl)%curyr_mat = max (1, pcom(j)%plcur(ipl)%curyr_mat)
+          ! set total hu to maturity for perennials
+          pcom(j)%plcur(ipl)%phumat_p = pcom(j)%plcur(ipl)%phumat * pldb(idp)%mat_yrs
+            
           cvm_com(j) = plcp(idp)%cvm + cvm_com(j)
           pcom(j)%rsd_covfac = pcom(j)%rsd_covfac + pldb(idp)%rsd_covfac
           rsdco_plcom(j) = rsdco_plcom(j) + pldb(idp)%rsdco_pl
@@ -308,16 +319,17 @@
             laimx_pop = pldb(idp)%blai
           else
             xx = pcom(j)%plcur(ipl)%pop_com / 1001.
-            laimx_pop = pldb(idp)%blai * xx / (xx +          &
-                    exp(pldb(idp)%pop1 - pldb(idp)%pop2 * xx))
+            laimx_pop = pldb(idp)%blai * xx / (xx + exp(pldb(idp)%pop1 - pldb(idp)%pop2 * xx))
           end if
           pcom(j)%plcur(ipl)%harv_idx = pldb(idp)%hvsti
           pcom(j)%plcur(ipl)%lai_pot = laimx_pop
           
-          !! initialize plant mass
-          call pl_root_gro(j)
-          call pl_seed_gro(j)
-          call pl_partition(j)
+          !! initialize plant mass if plant growing
+          if (pcom(j)%plcur(ipl)%gro == "y") then
+            call pl_root_gro(j)
+            call pl_seed_gro(j)
+            call pl_partition(j)
+          end if
 
         end do   ! ipl loop
         

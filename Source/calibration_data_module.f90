@@ -153,10 +153,10 @@
         character(len=16) :: name = "default"
         real :: init_val                            !! xwalk lum()%name with lscal()%lum()%name
         character(len=16) :: chg_typ                !! type of change (absval,abschg,pctchg)
-        real :: neg                     !! negative limit of change
-        real :: pos                     !! positive limit of change
-        real :: lo                      !! lower limit of parameter
-        real :: up                      !! upper limit of parameter
+        real :: neg                     !! negative limit per interation
+        real :: pos                     !! positive limit per iteration
+        real :: lo                      !! ultimate lower limit of parameter
+        real :: up                      !! ultimate upper limit of parameter
       end type pl_parms_cal
 
       type pl_parm_region

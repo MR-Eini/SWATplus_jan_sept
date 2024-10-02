@@ -1,4 +1,6 @@
       module reservoir_module
+    
+      implicit none
 
       real :: reactw                  !mg pst        |amount of pesticide in reach that is lost through reactions
       real :: volatpst                !mg pst        |amount of pesticide lost from reach by volatilization
@@ -26,6 +28,9 @@
         real :: weir_hgt = 0                !m      !height of weir above the bottom
         real :: weir_wid = 0                !m      !width of weir above the bottom  Jaehak 2022
         real :: seci = 0                    !m      !seci depth
+        real :: prev_flo = 0                !m3     !previous days flow to smooth outflows
+        real :: lag_up = 0                  !       !lag parameter for increasing outflow - prevents sudden jumps
+        real :: lag_down = 0                !       !lag parameter for decreasing outflow - prevents sudden drops
         real, dimension (:), allocatable :: kd      !           |aquatic mixing velocity (diffusion/dispersion)-using mol_wt
         real, dimension (:), allocatable :: aq_mix  ! m/day     |aquatic mixing velocity (diffusion/dispersion)-using mol_wt
       end type reservoir          

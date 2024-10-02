@@ -213,7 +213,8 @@
 
         write (2053,103) time%day, time%mo, time%day_mo, time%yrc, "       1", "       1", bsn%name, bwb_a, cal_sim, cal_adj
         if (pco%csvout == "y") then 
-          write (2057,'(*(G0.3,:","))') time%day, time%mo, time%day_mo, time%yrc, "       1", "       1", bsn%name, bwb_a, cal_sim, cal_adj
+          write (2057,'(*(G0.3,:","))') time%day, time%mo, time%day_mo, time%yrc, "       1", "       1", bsn%name, bwb_a,    &
+                    cal_sim, cal_adj
         end if
         ban_precip_aa = bwb_a%precip
         bwb_a = hwbz
@@ -247,8 +248,8 @@
       
       return
 
-100   format (4i6,2a,2x,a16,40f12.3) 
-103   format (4i6,2x,2a,2x,a16,40f12.3,a,f17.3)
+100   format (4i6,2a,2x,a16,42f12.3) 
+103   format (4i6,2x,2a,2x,a16,42f12.3,a,f17.3)
 104   format (4i6,2a,2x,a16,4f12.3,23f17.3)
        
       end subroutine basin_output

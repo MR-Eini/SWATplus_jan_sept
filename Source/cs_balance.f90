@@ -18,7 +18,9 @@
       use ch_cs_module, only: chcs_d
       use gwflow_module, only : gw_solute_flag,gwsol_ss,ncell,ncell,gw_state,gwsol_state
 
-      integer :: i,m,ob_ctr,num_days,sol_index
+      implicit none
+      
+      integer :: i,m,ob_ctr,num_days,sol_index,jj
       real :: cssum1,cssum2,cssum3,hru_area_m2,sol_thick,soil_volume,soil_mass, &
               aquifer_thickness,aquifer_volume,aquifer_mass, sub_ha
       real :: cs_basin(87)
@@ -96,8 +98,8 @@
       cssum1 = 0.
       cssum2 = 0.
       cssum3 = 0.
-      if(bsn_cc%gwflow == 1) then !gwflow is active; loop through cells (add to tile flow from HRUs)
-        if(gw_solute_flag) then
+      if (bsn_cc%gwflow == 1) then !gwflow is active; loop through cells (add to tile flow from HRUs)
+        if (gw_solute_flag == 1) then
           do i=1,ncell
             sol_index = 2 + cs_db%num_salts
             cssum1 = cssum1 + (gwsol_ss(i)%solute(sol_index+1)%tile * (-1) / 1000.) !kg seo4  
@@ -334,8 +336,8 @@
       cssum1 = 0.
       cssum2 = 0.
       cssum3 = 0.
-      if(bsn_cc%gwflow == 1) then !gwflow is active; loop through cells
-        if(gw_solute_flag) then
+      if (bsn_cc%gwflow == 1) then !gwflow is active; loop through cells
+        if (gw_solute_flag == 1) then
           do i=1,ncell
             sol_index = 2 + cs_db%num_salts
             !seo4
@@ -367,8 +369,8 @@
       cssum1 = 0.
       cssum2 = 0.
       cssum3 = 0.
-      if(bsn_cc%gwflow == 1) then !gwflow is active
-        if(gw_solute_flag) then
+      if (bsn_cc%gwflow == 1) then !gwflow is active
+        if (gw_solute_flag == 1) then
           do i=1,ncell
             sol_index = 2 + cs_db%num_salts
             cssum1 = cssum1 + (gwsol_ss(i)%solute(sol_index+1)%rech / 1000.) !kg seo4
@@ -404,13 +406,13 @@
       cssum1 = 0.
       cssum2 = 0.
       cssum3 = 0.
-      if(bsn_cc%gwflow == 1) then !gwflow is active
-        if(gw_solute_flag) then
+      if (bsn_cc%gwflow == 1) then !gwflow is active
+        if (gw_solute_flag == 1) then
           do i=1,ncell
             sol_index = 2 + cs_db%num_salts
-            cssum1 = cssum1 + (gwsol_ss(i)%solute(sol_index+1)%rctn / 1000.) !kg seo4 
-            cssum2 = cssum2 + (gwsol_ss(i)%solute(sol_index+2)%rctn / 1000.) !kg seo3
-            cssum3 = cssum3 + (gwsol_ss(i)%solute(sol_index+3)%rctn / 1000.) !kg boron  
+            cssum1 = cssum1 + ((gwsol_ss(i)%solute(sol_index+1)%rcti+gwsol_ss(i)%solute(sol_index+1)%rcto) / 1000.) !kg seo4 
+            cssum2 = cssum2 + ((gwsol_ss(i)%solute(sol_index+2)%rcti+gwsol_ss(i)%solute(sol_index+2)%rcto) / 1000.) !kg seo3
+            cssum3 = cssum3 + ((gwsol_ss(i)%solute(sol_index+3)%rcti+gwsol_ss(i)%solute(sol_index+3)%rcto) / 1000.) !kg boron  
           enddo
         endif 
       else
@@ -428,8 +430,8 @@
       cssum1 = 0.
       cssum2 = 0.
       cssum3 = 0.
-      if(bsn_cc%gwflow == 1) then !gwflow is active
-        if(gw_solute_flag) then
+      if (bsn_cc%gwflow == 1) then !gwflow is active
+        if (gw_solute_flag == 1) then
           do i=1,ncell
             sol_index = 2 + cs_db%num_salts
             cssum1 = cssum1 + (gwsol_ss(i)%solute(sol_index+1)%sorb / 1000.) !kg seo4 
@@ -452,8 +454,8 @@
       cssum1 = 0.
       cssum2 = 0.
       cssum3 = 0.
-      if(bsn_cc%gwflow == 1) then !gwflow is active
-        if(gw_solute_flag) then
+      if (bsn_cc%gwflow == 1) then !gwflow is active
+        if (gw_solute_flag == 1) then
           do i=1,ncell
             if(gw_state(i)%stat > 0) then
               sol_index = 2 + cs_db%num_salts
@@ -654,13 +656,15 @@
       enddo
       
       !if gwflow active: zero out daily cell values for recharge, reactions, and sorption (others are zeroed out in gwflow_simulate)
-      if(bsn_cc%gwflow == 1) then
-        if(gw_solute_flag) then
+      if (bsn_cc%gwflow == 1) then
+        if (gw_solute_flag == 1) then
           sol_index = 2 + cs_db%num_salts + 1
           do m=1,cs_db%num_cs
             do i=1,ncell
               gwsol_ss(i)%solute(sol_index)%rech = 0.
-              gwsol_ss(i)%solute(sol_index)%rctn = 0.
+              gwsol_ss(i)%solute(sol_index)%rcti = 0.
+              gwsol_ss(i)%solute(sol_index)%rcto = 0.
+              gwsol_ss(i)%solute(sol_index)%minl = 0.
               gwsol_ss(i)%solute(sol_index)%sorb = 0.
             enddo
             sol_index = sol_index + 1

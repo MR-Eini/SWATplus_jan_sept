@@ -143,7 +143,7 @@
           
           
           !! calculate transmission losses
-          tl = sd_ch(jrch)%chk * sd_ch(jrch)%chl * rcurv%wet_perim * 24. / time%step   !mm/hr * km * mm * hr = m3       
+          tl = sd_ch(jrch)%chk * sd_ch(jrch)%chl * rcurv%wet_perim * 24. / real(time%step)   !mm/hr * km * mm * hr = m3       
           tl = Min(tl, outflo)
           outflo = outflo - tl
           trans_loss = trans_loss + tl
@@ -166,7 +166,7 @@
           end if
 
           !! set volume of water in channel at end of hour
-          write (2612,*) ii, ttime, scoef, vol, ob(icmd)%tsin(ii), outflo
+          !write (2612,*) ii, ttime, scoef, vol, ob(icmd)%tsin(ii), outflo
           vol = vol - outflo !- tl - ev
           ob(icmd)%hyd_flo(1,ii) = outflo
           outflo_sum = outflo_sum + outflo

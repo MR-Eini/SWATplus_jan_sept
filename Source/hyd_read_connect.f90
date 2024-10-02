@@ -30,7 +30,8 @@
       integer :: cmd_prev             !none       |previous command (object) number
       integer :: ob1                  !none       |beginning of loop
       integer :: ob2                  !none       |ending of loop
-      integer :: i                    !none       |counter
+      integer :: i                    !none       |object counter
+      integer :: isp_ob               !none       |spatial object counter
       integer :: nout                 !           |       
       integer :: iout                 !           |       
       integer :: k                    !           |
@@ -60,10 +61,13 @@
           if (nspu > 0) then
             ob1 = nspu1
             ob2 = nspu1 + nspu - 1
+            isp_ob = 0
 
             do i = ob1, ob2
               ob(i)%typ = obtyp
               ob(i)%nhyds = nhyds
+              isp_ob = isp_ob + 1
+              ob(i)%sp_ob_no = isp_ob
               allocate (ob(i)%hd(nhyds))
               allocate (ob(i)%hd_aa(nhyds))
               ob(i)%trans = hz
@@ -201,7 +205,7 @@
                 end do
               end if
                 
-              if (time%step > 0) then
+              !if (time%step > 0) then
                 ob(i)%day_max = ndsave
                 allocate (ob(i)%ts(ob(i)%day_max,time%step))
                 allocate (ob(i)%tsin(time%step))
@@ -209,7 +213,7 @@
                 allocate (ob(i)%hyd_flo(ob(i)%day_max,time%step))
                 ob(i)%uh = 0.
                 ob(i)%hyd_flo = 0.
-              end if
+              !end if
               read (107,*,iostat=eof) ob(i)%num, ob(i)%name, ob(i)%gis_id, ob(i)%area_ha, ob(i)%lat, ob(i)%long, &
                 ob(i)%elev, ob(i)%props, ob(i)%wst_c, ob(i)%constit, ob(i)%props2, ob(i)%ruleset, ob(i)%src_tot
               
@@ -301,7 +305,7 @@
                       endif
                     enddo
                   endif
-                  if(aqu_found.eq.1 .and. nat_model) then
+                  if(aqu_found.eq.1 .and. nat_model == 1) then
                     ob(i)%src_tot = ob(i)%src_tot - 1
                   endif
                   

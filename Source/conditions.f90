@@ -343,6 +343,12 @@
           ivar_tbl = int(d_tbl%cond(ic)%lim_const)
           call cond_integer (ic, ivar_cur, ivar_tbl)
                   
+        !sequential year of simulation
+        case ("year_start")
+          ivar_cur = time%yrc_start
+          ivar_tbl = int(d_tbl%cond(ic)%lim_const)
+          call cond_integer (ic, ivar_cur, ivar_tbl)
+                  
         !current years of maturity for perennial plants
         case ("cur_yrs_mat")
           ob_num = d_tbl%cond(ic)%ob_num
@@ -638,6 +644,19 @@
           do ialt = 1, d_tbl%alts
             if (d_tbl%alt(ic,ialt) == "=") then
               if (hru(ob_num)%dbsc%land_use_mgt /= d_tbl%cond(ic)%lim_var) then
+                d_tbl%act_hit(ialt) = "n"
+              end if
+            end if
+          end do
+                   
+        !calibration group in landuse.lum - ie: cropland, urban, forest, etc
+        case ("cal_group")
+          ob_num = d_tbl%cond(ic)%ob_num
+          if (ob_num == 0) ob_num = ob_cur
+          
+          do ialt = 1, d_tbl%alts
+            if (d_tbl%alt(ic,ialt) == "=") then
+              if (hru(ob_num)%cal_group /= d_tbl%cond(ic)%lim_var) then
                 d_tbl%act_hit(ialt) = "n"
               end if
             end if

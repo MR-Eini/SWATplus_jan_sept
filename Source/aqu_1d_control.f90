@@ -370,12 +370,12 @@
       ob(icmd)%hin_tot = ob(icmd)%hin_tot + ob(icmd)%hin
       ob(icmd)%hout_tot = ob(icmd)%hout_tot + ob(icmd)%hd(1) + ob(icmd)%hd(2)
         
-      if (time%step > 0) then
+      !if (time%step > 0) then
         do ii = 1, time%step
           step = real(time%step)
           ob(icmd)%ts(1,ii) = ob(icmd)%hd(1) / step
         end do
-      end if
+      !end if
 
       return
       end subroutine aqu_1d_control

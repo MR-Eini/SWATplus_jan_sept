@@ -39,6 +39,7 @@
         character (len=16) :: name
         real :: tot_mn                                              !       |total mineral n pool (no3+nh4) in soil profile
         real :: tot_mp                                              !       |mineral p pool (wsol+lab+act+sta) in soil profile
+        real :: salt                                                !       |total salt amount (kg/ha) in soil profile
         type (organic_mass) :: tot_org                              !       |total organics in soil profile
         real, dimension(:), allocatable :: sw                       !mm     |soil water dimensioned by layer
         real, dimension(:), allocatable :: cbn                      !%      |percent carbon
@@ -74,6 +75,7 @@
       type (organic_mass) :: soil_prof_hs                           !       |total litter pool
       type (organic_mass) :: soil_prof_hp                           !       |total litter pool
       type (organic_mass) :: soil_prof_microb                       !       |total litter pool
+      type (organic_mass) :: soil_prof_somc
       type (organic_mass) :: soil_prof_water                        !       |total litter pool
       type (organic_mass) :: soil_org_z                             !       |total litter pool
       type (organic_mass) :: soil_prof_rsd                          !       |total litter pool

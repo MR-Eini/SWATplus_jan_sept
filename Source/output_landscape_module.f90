@@ -42,7 +42,9 @@
         real :: lagsurf = 0.		  !mm H2O        |surface runoff in transit to channel
         real :: laglatq = 0.          !mm H2O	     |lateral flow in transit to channel
         real :: lagsatex = 0.         !mm H2O	     |saturation excess flow in transit to channel
+        real :: wet_evap = 0.         !mm H2O	     |evaporation from wetland surface
         real :: wet_out = 0.          !mm H2O	     |outflow (spill) from wetland
+        real :: wet_stor = 0.         !mm H2O	     |volume stored in wetland at end of time period
       end type output_waterbal
        
       type (output_waterbal), pointer :: h
@@ -332,6 +334,8 @@
         character (len=12) :: laglatq    =  "     laglatq"
         character (len=12) :: lagsatex   =  "    lagsatex"
         character (len=12) :: wet_evap   =  "    wet_evap"
+        character (len=12) :: wet_oflo   =  "    wet_oflo"
+        character (len=12) :: wet_stor   =  "    wet_stor"
       end type output_waterbal_header      
       type (output_waterbal_header) :: wb_hdr
       
@@ -383,6 +387,8 @@
         character (len=12) :: laglatq    =  "          mm"
         character (len=12) :: lagsatex   =  "          mm"
         character (len=12) :: wet_evap   =  "          mm"
+        character (len=12) :: wet_oflo   =  "          mm"
+        character (len=12) :: wet_stor   =  "          mm"
       end type output_waterbal_header_units      
       type (output_waterbal_header_units) :: wb_hdr_units
          
@@ -411,8 +417,8 @@
          character(len=17) :: nh4atmo =    "    nh4atmo       "
          character(len=17) :: nuptake =    "    nuptake       " 
          character(len=17) :: puptake =    "    puptake       "		 
-         character(len=17) :: gwsoiln =    "          gwsoiln"
-         character(len=17) :: gwsoilp =    "          gwsoilp"
+         character(len=17) :: gwsoiln =    "    gwsoiln       "
+         character(len=17) :: gwsoilp =    "    gwsoilp       "
       end type output_nutbal_header         
       type (output_nutbal_header) :: nb_hdr
       
@@ -441,8 +447,8 @@
          character(len=17) :: nh4atmo       =    "      kgha       " 
          character(len=17) :: nuptake       =    "      kgha       "   
          character(len=17) :: puptake       =    "      kgha       "  
-         character(len=17) :: gwsoiln       =    "             kgha"
-         character(len=17) :: gwsoilp       =    "             kgha"
+         character(len=17) :: gwsoiln       =    "      kgha       "
+         character(len=17) :: gwsoilp       =    "      kgha       "
       end type output_nutbal_header_units         
       type (output_nutbal_header_units) :: nb_hdr_units
       
@@ -1183,7 +1189,9 @@
         hru3%lagsurf = hru1%lagsurf + hru2%lagsurf
         hru3%laglatq = hru1%laglatq + hru2%laglatq
         hru3%lagsatex = hru1%lagsatex + hru2%lagsatex
+        hru3%wet_evap = hru1%wet_evap + hru2%wet_evap
         hru3%wet_out = hru1%wet_out + hru2%wet_out
+        hru3%wet_stor = hru1%wet_stor + hru2%wet_stor
       end function hruout_waterbal_add
       
       function hruout_nutbal_add (hru1, hru2) result (hru3)
@@ -1377,8 +1385,6 @@
         hru2%yieldp = hru1%yieldp / const
       end function hruout_nut_gain_loss_div
       
-!****************************new
-      
       function hruout_plantweather_add (hru1, hru2) result (hru3)
         type (output_plantweather), intent (in) :: hru1
         type (output_plantweather), intent (in) :: hru2
@@ -1444,7 +1450,9 @@
         hru2%lagsurf = hru1%lagsurf / const
         hru2%laglatq = hru1%laglatq / const
         hru2%lagsatex = hru1%lagsatex / const
+        hru2%wet_evap = hru1%wet_evap / const
         hru2%wet_out = hru1%wet_out / const
+        hru2%wet_stor = hru1%wet_stor
       end function hruout_waterbal_div
       
       function hruout_waterbal_ave (hru1,const) result (hru2)
@@ -1490,7 +1498,9 @@
         hru2%lagsurf = hru1%lagsurf
         hru2%laglatq = hru1%laglatq
         hru2%lagsatex = hru1%lagsatex
+        hru2%wet_evap = hru1%wet_evap
         hru2%wet_out = hru1%wet_out
+        hru2%wet_stor = hru1%wet_stor / const
       end function hruout_waterbal_ave
 
       function hruout_waterbal_mult (hru1,const) result (hru2)
@@ -1532,7 +1542,9 @@
         hru2%lagsurf = hru1%lagsurf * const
         hru2%laglatq = hru1%laglatq * const
         hru2%lagsatex = hru1%lagsatex * const
+        hru2%wet_evap = hru1%wet_evap * const
         hru2%wet_out = hru1%wet_out * const
+        hru2%wet_stor = hru1%wet_stor * const
       end function hruout_waterbal_mult
       
       function hruout_nutbal_div (hru1,const) result (hru2)

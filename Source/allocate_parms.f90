@@ -55,7 +55,7 @@
       allocate (plqm(mhru))
       allocate (itb(mhru))
       
-      if (time%step > 0) allocate (hhqday(mhru,time%step))
+      allocate (hhqday(mhru,time%step))
       
  !!  added per JGA for Srini by gsm 9/8/2011
  !! arrays for mangement output (output.mgt)  

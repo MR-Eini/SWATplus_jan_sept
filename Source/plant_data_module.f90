@@ -3,7 +3,6 @@
       implicit none
       
       character(len=16), dimension (:), allocatable :: plts_bsn     !none      |plant names simulated in current run
-      character(len=16), dimension (:), allocatable :: plants_bsn   !none      |plant names simulated in current run - final
      
       type plant_db
         character(len=40) :: plantnm     !none              |crop name
@@ -57,7 +56,7 @@
         real :: rsdco_pl = 0.05          !none              |plant residue decomposition coeff
         real :: alai_min = 0.75          !m**2/m**2         |min LAI during winter dormant period
         real :: laixco_tree = 0.3        !none              |coefficient to estimate max lai during tree growth
-        integer :: mat_yrs = 10          !years             |year to maturity  
+        integer :: mat_yrs = 10          !years             |years to maturity  
         real :: bmx_peren = 1000.        !metric tons/ha    |max biomass for forest
         real :: ext_coef = 0.65          !                  |light extinction coefficient
         real :: leaf_tov_min = 12.       !months            |perennial leaf turnover rate with minimum stress (complete turnover in 12 mon)

@@ -22,6 +22,7 @@
       integer :: j                   !none          |same as ihru (hru number)
       real :: cnv_m3                 !              |
       real :: cnv_kg                 !              |
+      real :: cnv_ppm                !              |
       integer :: iob                 !              |
       integer :: ihyd                !none          |counter
       integer :: ipest               !none          |counter
@@ -70,8 +71,13 @@
       ob(icmd)%hd(3)%chla = chl_a(j) *cnv_kg          !!chl_a
       ob(icmd)%hd(3)%nh3 = 0.                         !! NH3
       ob(icmd)%hd(3)%no2 = 0.                         !! NO2
-      ob(icmd)%hd(3)%cbod = cbodu(j) * cnv_kg         !!cbodu
-      ob(icmd)%hd(3)%dox = doxq(j) *cnv_kg            !!doxq & soxy
+      if (ob(icmd)%hd(3)%flo > 0.01) then
+        cnv_ppm = 1. / (1000. * ob(icmd)%hd(3)%flo)
+      else
+        cnv_ppm = 0.
+      end if
+      ob(icmd)%hd(3)%cbod = cbodu(j) * cnv_ppm        !!cbodu
+      ob(icmd)%hd(3)%dox = doxq(j) * cnv_ppm          !!doxq & soxy
 
       ob(icmd)%hd(3)%san = sanyld(j)                  !! detached sand
       ob(icmd)%hd(3)%sil = silyld(j)                  !! detached silt
@@ -182,12 +188,12 @@
       enddo
       
       !! set subdaily hydrographs
-      if (time%step > 0) then
-        !! set previous and next days for adding previous and translating to next
-        day_cur = ob(icmd)%day_cur
-        day_next = day_cur + 1
-        if (day_next > ob(icmd)%day_max) day_next = 1
+      !! set previous and next days for adding previous and translating to next
+      day_cur = ob(icmd)%day_cur
+      day_next = day_cur + 1
+      if (day_next > ob(icmd)%day_max) day_next = 1
           
+      if (time%step > 1) then
         if (bsn_cc%gampt == 1) then
           !! hhsurfq from sq_greenampt - mm
           ob(icmd)%hyd_flo(day_cur,:) = ob(icmd)%hyd_flo(day_cur,:) + hhsurfq(j,:) * cnv_m3
@@ -211,12 +217,15 @@
                 ob(icmd)%hyd_flo(day_cur,istep_bak) = ob(icmd)%hyd_flo(day_cur,istep_bak-tinc)
               end if
             end do
-          end if  
+          end if
         else
           !! use unit hydrograph and daily runoff
           call flow_hyd_ru_hru (ob(icmd)%day_cur, ob(icmd)%hd(3)%flo, ob(icmd)%hd(4)%flo,     &
                                         ob(icmd)%hd(5)%flo, ob(icmd)%uh, ob(icmd)%hyd_flo)
         end if
+      else
+        !! set to total runoff needed when summing incoming in command
+        ob(icmd)%hyd_flo(day_cur,1) = ob(icmd)%hd(1)%flo
       end if
 
       return   

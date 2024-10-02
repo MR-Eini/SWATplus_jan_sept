@@ -49,6 +49,7 @@
       real :: shear_bank              !              |
       real :: shear_bank_adj          !              | 
       real :: e_bank                  !              | 
+      real :: bf_flow                 !m3/s          |bankfull flow rate * adjustment factor
            
       ich = isdch
       isd_db = sd_dat(ich)%hyd
@@ -102,7 +103,7 @@
           perim_bank = 2. * ((sd_ch(ich)%chd ** 2) * (1. + sd_ch(ich)%chss ** 2)) ** 0.5
           perim_bed = sd_ch(ich)%chw
           tw = perim_bed + 2. * sd_ch(ich)%chss * rchdep
-          s_bank = 1.77 * (perim_bed / perim_bank + 1.5) ** - 1.4
+          s_bank = 1.77 * (perim_bed / perim_bank + 1.5) ** (- 1.4)
           !! assume bank shear is 75% of bottom shear
           shear_bank = shear_btm * 0.75     !sd_ch(ich)%shear_bnk * s_bank * (tw * perim_bed) / (2. * perim_bank)
           if (sd_ch(ich)%ch_clay >= 10.) then
@@ -114,7 +115,7 @@
           shear_bank_cr = 0.493 * 10. ** (.0182 * sd_ch(ich)%ch_clay)
           e_bank = 0.
           if (shear_bank_adj > shear_bank_cr) then
-            e_bank = ts_hr * sd_ch(ich)%cherod * (shear_bank_adj - shear_bank_cr)    !! cm = hr * cm/hr/Pa * Pa
+            !e_bank = ts_hr * sd_ch(ich)%cherod * (shear_bank_adj - shear_bank_cr)    !! cm = hr * cm/hr/Pa * Pa
             erode_bank = erode_bank + e_bank
             !! calc mass of sediment eroded -> t = cm * m/100cm * width (m) * length (km) * 1000 m/km * bd (t/m3)
             !! apply to only one side (perim_bank / 2.)
@@ -124,10 +125,10 @@
           !! no downcutting below equilibrium slope
           e_btm = 0.
           erode_bank_cut = 0.
-          if (sd_ch(ich)%chs > sd_ch(ich)%chseq) then
+          if (sd_ch(ich)%chs > 0.000001) then       ! sd_ch(ich)%chseq) then
             !! if bottom shear > d50 -> downcut - widen to maintain width depth ratio
             if (shear_btm > shear_btm_cr) then
-              e_btm = ts_hr *  sd_ch(ich)%cherod * (shear_btm - shear_btm_cr)    !! cm = hr * cm/hr/Pa * Pa
+              !e_btm = ts_hr *  sd_ch(ich)%cherod * (shear_btm - shear_btm_cr)    !! cm = hr * cm/hr/Pa * Pa
               !! if downcutting - check width depth ratio to see if widens
               !if (sd_ch(ich)%chw / sd_ch(ich)%chd < sd_ch(ich)%wd_rto) then
               !  erode_bank_cut = e_btm * sd_ch(ich)%wd_rto
@@ -142,34 +143,36 @@
 
         end do    ! ihval
         
-
+        erode_btm = max (0., erode_btm)
+        erode_bank = max (0., erode_bank)
+        erode_bank_cut = max (0., erode_bank_cut)
           
-          erode_btm = max (0., erode_btm)
-          erode_bank = max (0., erode_bank)
-          erode_bank_cut = max (0., erode_bank_cut)
+        !! adjust for incoming bedload and compute deposition
+        !! assume bedload is deposited
+        dep = 0.  ! sd_ch(ich)%bedldcoef * ht1%sed
+        dep_btm = dep / (10. * perim_bed * sd_ch(ich)%chl * sd_ch(ich)%ch_bd)
+        erode_btm = erode_btm ! - dep_btm      !don't add in all bedload (most will be transported out)
+        sd_ch(ich)%chd = sd_ch(ich)%chd + erode_btm / 100.
+        if (sd_ch(ich)%chd < 0.) then
+          !! stream is completely filled in
+          sd_ch(ich)%chd = 0.01
+        end if
           
-          !! adjust for incoming bedload and compute deposition
-          !! assume bedload is deposited
-          dep = sd_ch(ich)%bedldcoef * ht1%sed
-          dep_btm = dep / (10. * perim_bed * sd_ch(ich)%chl * sd_ch(ich)%ch_bd)
-          erode_btm = erode_btm ! - dep_btm      !don't add in all bedload (most will be transported out)
-          sd_ch(ich)%chd = sd_ch(ich)%chd + erode_btm / 100.
-          if (sd_ch(ich)%chd < 0.) then
-            !! stream is completely filled in
-            sd_ch(ich)%chd = 0.01
-          end if
-          
-          sd_ch(ich)%chw = sd_ch(ich)%chw + erode_bank / 100. + 2. * erode_bank_cut / 100.
-          sd_ch(ich)%chs = sd_ch(ich)%chs - (erode_btm / 100.) / (sd_ch(ich)%chl * 1000.)
-          sd_ch(ich)%chs = max (sd_ch(ich)%chseq, sd_ch(ich)%chs)
+        sd_ch(ich)%chw = sd_ch(ich)%chw + erode_bank / 100. + 2. * erode_bank_cut / 100.
+        sd_ch(ich)%chs = sd_ch(ich)%chs - (erode_btm / 100.) / (sd_ch(ich)%chl * 1000.)
+        sd_ch(ich)%chs = max (0.000001, sd_ch(ich)%chs)
+      
+      !! compute flood plain deposition
+      bf_flow = sd_ch(ich)%bankfull_flo * ch_rcurv(ich)%elev(2)%flo_rate
+      if (peakrate > bf_flow) then
+        !dep = sd_ch(ich)%chseq * ht1%sed           !((peakrate - bf_flow) / peakrate) * ht1%sed
+      end if
       
       !! output channel morphology
       chsd_d(ich)%sed_in = ob(icmd)%hin%sed
       chsd_d(ich)%sed_out = sedout
       chsd_d(ich)%sed_stor = ch_stor(ich)%sed
-      if (sedout > 2000.) then      !***jga
-        dep = bedld
-      end if
+      
       chsd_d(ich)%washld = washld
       chsd_d(ich)%bedld = bedld
       chsd_d(ich)%dep = dep
@@ -183,13 +186,10 @@
       chsd_d(ich)%deg_bank_m = erode_bank
       chsd_d(ich)%hc_m = hc
       
-        !end if
-
-      !! compute sediment leaving the channel
-	  washld = (1. - sd_ch(ich)%bedldcoef) * ht1%sed
-	  sedout = washld + hc_sed + deg_btm + deg_bank
-      dep = ht1%sed - sedout
-      dep = max (0., dep)
+      !! compute sediment leaving the channel - washload only - bottom deg is bedload
+	  sedout = ht1%sed - dep + hc_sed + erode_bank     !  + ebtm_t
+      ht2%sed = sedout
+      
 
       return
       

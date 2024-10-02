@@ -34,6 +34,7 @@
       use hydrograph_module
       use pesticide_data_module
       use plant_module
+	  use gwflow_module
       
       implicit none
 
@@ -48,6 +49,7 @@
       integer :: jj                                         !                |soil layer counter
       integer :: ipl                                        !                |soil layer counter
       integer :: ihru                                       !                |hru counter
+	  integer :: icell                                      !                |gwflow cell counter (rtb)
       real :: exp                                           !                | 
       real :: c_val                                         !                | 
       real :: abmax                                         !                | 
@@ -609,20 +611,16 @@
             sd_ch(ielem)%chk = chg_par(sd_ch(ielem)%chk,                  &
                          chg_typ, chg_val, absmin, absmax)
         
-         case ("cherod")
-            sd_ch(ielem)%cherod = chg_par(sd_ch(ielem)%cherod,            &
+         case ("bank_exp")
+            sd_ch(ielem)%bank_exp = chg_par(sd_ch(ielem)%bank_exp,            &
                          chg_typ, chg_val, absmin, absmax)
         
          case ("cov")
             sd_ch(ielem)%cov = chg_par(sd_ch(ielem)%cov,                  &
                         chg_typ, chg_val, absmin, absmax)
             
-        ! case ("wd_rto")
-        !    sd_ch(ielem)%wd_rto = chg_par(sd_ch(ielem)%wd_rto,            &
-        !                 chg_typ, chg_val, absmin, absmax)
-        
-         case ("chseq")
-            sd_ch(ielem)%chseq = chg_par(sd_ch(ielem)%chseq,              &
+         case ("vcr_coef")
+            sd_ch(ielem)%vcr_coef = chg_par(sd_ch(ielem)%vcr_coef,              &
                          chg_typ, chg_val, absmin, absmax)
         
          case ("d50")
@@ -638,24 +636,20 @@
                          chg_typ, chg_val, absmin, absmax)     
  
          case ("ch_bd")
-            sd_ch(ielem)%ch_bd = chg_par(sd_ch(ielem)%ch_bd,              &
-                         chg_typ, chg_val, absmin, absmax)
+            sd_ch(ielem)%ch_bd = chg_par(sd_ch(ielem)%ch_bd, chg_typ, chg_val, absmin, absmax)
         
          case ("chss")
-            sd_ch(ielem)%chss = chg_par(sd_ch(ielem)%chss,            &
-                        chg_typ, chg_val, absmin, absmax)
+            sd_ch(ielem)%chss = chg_par(sd_ch(ielem)%chss, chg_typ, chg_val, absmin, absmax)
         
-         case ("bedldcoef")
-            sd_ch(ielem)%bedldcoef = chg_par(sd_ch(ielem)%bedldcoef,                  &
+         case ("bankfull_flo")
+            sd_ch(ielem)%bankfull_flo = chg_par(sd_ch(ielem)%bankfull_flo,      &
                          chg_typ, chg_val, absmin, absmax)
             
          case ("fps")
-            sd_ch(ielem)%fps = chg_par(sd_ch(ielem)%fps,            &
-                         chg_typ, chg_val, absmin, absmax)
+            sd_ch(ielem)%fps = chg_par(sd_ch(ielem)%fps, chg_typ, chg_val, absmin, absmax)
         
          case ("fpn")
-            sd_ch(ielem)%fpn = chg_par(sd_ch(ielem)%fpn,              &
-                         chg_typ, chg_val, absmin, absmax)
+            sd_ch(ielem)%fpn = chg_par(sd_ch(ielem)%fpn, chg_typ, chg_val, absmin, absmax)
 
          case ("hc_kh")
             sd_ch(ielem)%hc_kh = chg_par(sd_ch(ielem)%hc_kh,            &
@@ -667,6 +661,59 @@
         
          case ("hc_ini")
             sd_ch(ielem)%hc_ini = chg_par(sd_ch(ielem)%hc_ini,            &
+                         chg_typ, chg_val, absmin, absmax)
+            
+         case ("ch_n_conc")
+             sd_ch(ielem)%n_conc = chg_par (sd_ch(ielem)%n_conc, chg_typ, chg_val, absmin, absmax)
+          
+        case ("ch_p_conc")
+             sd_ch(ielem)%p_conc = chg_par (sd_ch(ielem)%p_conc, chg_typ, chg_val, absmin, absmax)
+          
+        case ("ch_p_bio")
+             sd_ch(ielem)%p_bio = chg_par (sd_ch(ielem)%p_bio, chg_typ, chg_val, absmin, absmax)
+             
+         case ("pk_rto")
+            sd_ch(ielem)%pk_rto = chg_par(sd_ch(ielem)%pk_rto,            &
+                         chg_typ, chg_val, absmin, absmax)
+        
+         case ("fp_inun_days")
+            sd_ch(ielem)%fp_inun_days = chg_par(sd_ch(ielem)%fp_inun_days,            &
+                         chg_typ, chg_val, absmin, absmax)
+        
+         case ("n_setl")
+            sd_ch(ielem)%n_setl = chg_par(sd_ch(ielem)%n_setl,            &
+                         chg_typ, chg_val, absmin, absmax)
+            
+         case ("p_setl")
+            sd_ch(ielem)%p_setl = chg_par(sd_ch(ielem)%p_setl,            &
+                         chg_typ, chg_val, absmin, absmax)
+        
+         case ("n_sol_part")
+            sd_ch(ielem)%n_sol_part = chg_par(sd_ch(ielem)%n_sol_part,            &
+                         chg_typ, chg_val, absmin, absmax)
+        
+         case ("p_sol_part")
+            sd_ch(ielem)%p_sol_part = chg_par(sd_ch(ielem)%p_sol_part,            &
+                         chg_typ, chg_val, absmin, absmax)
+            
+         case ("n_dep_enr")
+            sd_ch(ielem)%n_dep_enr = chg_par(sd_ch(ielem)%n_dep_enr,            &
+                         chg_typ, chg_val, absmin, absmax)
+        
+         case ("p_dep_enr")
+            sd_ch(ielem)%p_dep_enr = chg_par(sd_ch(ielem)%p_dep_enr,            &
+                         chg_typ, chg_val, absmin, absmax)
+            
+         case ("arc_len_fr")
+            sd_ch(ielem)%arc_len_fr = chg_par(sd_ch(ielem)%arc_len_fr,            &
+                         chg_typ, chg_val, absmin, absmax)
+        
+         case ("bed_exp")
+            sd_ch(ielem)%bed_exp = chg_par(sd_ch(ielem)%bed_exp,            &
+                         chg_typ, chg_val, absmin, absmax)
+        
+         case ("wash_bed_fr")
+            sd_ch(ielem)%wash_bed_fr = chg_par(sd_ch(ielem)%wash_bed_fr,            &
                          chg_typ, chg_val, absmin, absmax)
             
       !!RES
@@ -687,7 +734,21 @@
                          chg_typ, chg_val, absmin, absmax)
         
          case ("nsed")
-           res_sed(ielem)%nsed = chg_par(res_sed(ielem)%nsed,           &
+           res_prm(ielem)%sed%nsed = chg_par(res_prm(ielem)%sed%nsed,           &
+                         chg_typ, chg_val, absmin, absmax)
+           
+         case ("res_d50")
+           res_prm(ielem)%sed%d50 = chg_par(res_prm(ielem)%sed%d50,           &
+                         chg_typ, chg_val, absmin, absmax)
+           !! d50 -micro meters
+           res_prm(ielem)%sed_stlr_co = exp(-0.184 * res_prm(ielem)%sed%d50)
+           
+         case ("sed_stlr")
+           res_prm(ielem)%sed%sed_stlr = chg_par(res_prm(ielem)%sed%sed_stlr,           &
+                         chg_typ, chg_val, absmin, absmax)
+           
+         case ("velsetlr")
+           res_prm(ielem)%sed%velsetlr = chg_par(res_prm(ielem)%sed%velsetlr,           &
                          chg_typ, chg_val, absmin, absmax)
         
          case ("k_res")
@@ -731,27 +792,27 @@
                          chg_typ, chg_val, absmin, absmax)
         
          case ("psetlr1")
-            res_nut(ielem)%psetlr1 = chg_par(res_nut(ielem)%psetlr1,    &
+            res_prm(ielem)%nut%psetlr1 = chg_par(res_prm(ielem)%nut%psetlr1,    &
                          chg_typ, chg_val, absmin, absmax)
         
          case ("psetlr2")
-            res_nut(ielem)%psetlr2 = chg_par(res_nut(ielem)%psetlr2,    &
+            res_prm(ielem)%nut%psetlr2 = chg_par(res_prm(ielem)%nut%psetlr2,    &
                          chg_typ, chg_val, absmin, absmax)
         
          case ("nsetlr1")
-            res_nut(ielem)%nsetlr1 = chg_par(res_nut(ielem)%nsetlr1,    &
+            res_prm(ielem)%nut%nsetlr1 = chg_par(res_prm(ielem)%nut%nsetlr1,    &
                          chg_typ, chg_val, absmin, absmax)
         
          case ("nsetlr2")
-            res_nut(ielem)%nsetlr2 = chg_par(res_nut(ielem)%nsetlr2,    &
+            res_prm(ielem)%nut%nsetlr2 = chg_par(res_prm(ielem)%nut%nsetlr2,    &
                          chg_typ, chg_val, absmin, absmax)
         
          case ("chlar")
-            res_nut(ielem)%chlar = chg_par(res_nut(ielem)%chlar,        &
+            res_prm(ielem)%nut%chlar = chg_par(res_prm(ielem)%nut%chlar,        &
                          chg_typ, chg_val, absmin, absmax)
         
          case ("seccir")
-            res_nut(ielem)%seccir = chg_par(res_nut(ielem)%seccir,      &
+            res_prm(ielem)%nut%seccir = chg_par(res_prm(ielem)%nut%seccir,      &
                          chg_typ, chg_val, absmin, absmax)
             
       !! res decision tables
@@ -892,7 +953,64 @@
         case ("uslels_lte")
             hlt_db(ielem)%uslels = chg_par (hlt_db(ielem)%uslels, chg_typ, chg_val, absmin, absmax)
 
-        end select
+
+		!!gwflow (rtb)
+         case ("aquifer_K")
+				    if(bsn_cc%gwflow.eq.1) then
+				      gw_state(ielem)%hydc = chg_par(gw_state(ielem)%hydc, chg_typ, chg_val, absmin, absmax)		
+						endif
+						
+				 case ("aquifer_Sy")
+				    if(bsn_cc%gwflow.eq.1) then
+				      gw_state(ielem)%spyd = chg_par(gw_state(ielem)%spyd, chg_typ, chg_val, absmin, absmax)	
+				    endif
+							
+				 case ("aquifer_delay")
+				    if(bsn_cc%gwflow.eq.1) then
+				      gw_delay(ielem) = chg_par(gw_delay(ielem), chg_typ, chg_val, absmin, absmax)
+            endif
+							
+				 case ("aquifer_exdp")
+				    if(bsn_cc%gwflow.eq.1) then
+				      gw_state(ielem)%exdp = chg_par(gw_state(ielem)%exdp, chg_typ, chg_val, absmin, absmax)		
+					  endif	
+							
+				 case ("stream_K")
+				    if(bsn_cc%gwflow.eq.1) then
+				      do icell=1,gw_chan_info(ielem)%ncon !loop through cells connected to channel
+						    gw_chan_info(ielem)%hydc(icell) = chg_par(gw_chan_info(ielem)%hydc(icell), chg_typ, chg_val, absmin, absmax)
+						  enddo
+				    endif
+							
+				 case ("stream_thk")
+				    if(bsn_cc%gwflow.eq.1) then
+				      do icell=1,gw_chan_info(ielem)%ncon !loop through cells connected to channel
+						    gw_chan_info(ielem)%thck(icell) = chg_par(gw_chan_info(ielem)%thck(icell), chg_typ, chg_val, absmin, absmax)
+						  enddo
+				    endif
+							
+				 case ("stream_bed")
+				    if(bsn_cc%gwflow.eq.1) then
+				      gw_bed_change = chg_par(gw_bed_change, chg_typ, chg_val, absmin, absmax)		
+				    endif
+
+        !! initial soil properties
+        case ("lab_p")
+          do jj = 1, soil(ielem)%nly
+            soil1(ielem)%mp(ly)%lab = chg_par (soil1(ielem)%mp(ly)%lab, chg_typ, chg_val, absmin, absmax)
+          end do
+          
+        case ("hum_c_n")
+          do jj = 1, soil(ielem)%nly
+            soil1(ielem)%hact(ly)%n = chg_par (soil1(ielem)%hact(ly)%n, chg_typ, chg_val, absmin, absmax)
+          end do
+          
+        case ("hum_c_p")
+          do jj = 1, soil(ielem)%nly
+            soil1(ielem)%hact(ly)%p = chg_par (soil1(ielem)%hact(ly)%p, chg_typ, chg_val, absmin, absmax)
+          end do
+          
+      end select
 
       return
       end subroutine cal_parm_select

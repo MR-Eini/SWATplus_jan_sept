@@ -69,7 +69,9 @@
          backspace (105)
          read (105,*,iostat=eof) k, res_dat_c(ires)
          if (eof < 0) exit
-
+       end do
+       
+       do ires = 1, db_mx%res_dat
         !! initialize organics and minerals in water
         do isp_ini = 1, db_mx%res_init
           if (res_dat_c(ires)%init == res_init_dat_c(isp_ini)%init) then
@@ -105,7 +107,8 @@
         end do
 
          do ihyd = 1, db_mx%res_hyd
-           if (res_hyd(ihyd)%name == res_dat_c(ires)%hyd) then
+           if (res_hyddb(ihyd)%name == res_dat_c(ires)%hyd) then
+             res_hyd(ires) = res_hyddb(ihyd)
              res_dat(ires)%hyd = ihyd
              exit
            end if
@@ -131,6 +134,9 @@
           
          do ised = 1, db_mx%res_sed
            if (res_sed(ised)%name == res_dat_c(ires)%sed) then
+             res_prm(ires)%sed = res_sed(ised)
+             !! d50 - micro meters
+             res_prm(ires)%sed_stlr_co = exp(-0.184 * res_prm(ires)%sed%d50)
              res_dat(ires)%sed = ised
              exit
            end if
@@ -138,6 +144,7 @@
 
          do inut = 1, db_mx%res_nut
            if (res_nut(inut)%name == res_dat_c(ires)%nut) then
+             res_prm(ires)%nut = res_nut(inut)
              res_dat(ires)%nut = inut
              exit
            end if

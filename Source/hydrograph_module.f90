@@ -80,6 +80,7 @@
       type (hyd_output), dimension(:),allocatable :: hcnst
       type (hyd_output), dimension(:),allocatable :: hhr
       type (hyd_output) :: ht1, ht2, ht3, ht4, ht5, delrto
+      type (hyd_output) :: fp_dep, ch_dep, bank_ero, bed_ero, ch_trans
       
       !rtb hydrograph separation
       type (hyd_sep) :: hdsep1,hdsep2
@@ -179,6 +180,22 @@
       end type object_output
       type (object_output), dimension (:), allocatable :: ob_out
       
+      type channel_floodplain_water_balance
+        real :: inflo               !! m3       | inflow
+        real :: outflo              !! m3       | outflow
+        real :: tl                  !! m3       | transmission losses
+        real :: ev                  !! m3       | evaporation
+        real :: ch_stor_init        !! m3       | channel storage at start of time step
+        real :: ch_stor             !! m3       | channel storage at end of time step
+        real :: fp_stor_init        !! m3       | flood plain storage at start of time step (all flood plain storage above wetland emergency volume)
+        real :: fp_stor             !! m3       | flood plain storage at end of time step
+        real :: tot_stor_init       !! m3       | total channel + wetland storage at start of time step
+        real :: tot_stor            !! m3       | total channel + wetland storage at end of time step
+        real :: wet_stor_init       !! m3       | wetland flood plain storage at start of time step
+        real :: wet_stor            !! m3       | wetland flood plain storage at end of time step
+      end type channel_floodplain_water_balance
+      type (channel_floodplain_water_balance), dimension (:), allocatable :: ch_fp_wb
+      
       type timestep
         type (hyd_output), dimension(:),allocatable :: hh
       end type timestep
@@ -247,6 +264,7 @@
         real :: plaps                   !precipitation lapse applied to object precip
         real :: tlaps                   !temperature lapse applied to object precip
         real :: area_ha = 80.           !input drainag area - ha
+        integer :: sp_ob_no = 1         !spatial object number - ie: hru number, channel number, etc
         real :: area_ha_calc = 80.      !calculated drainage area-ha. only for checking - doesn't work if routing across landscape
         integer :: props = 1            !properties number from data base (ie hru.dat, sub.dat) - change props to data
         character (len=50) ::  wst_c    !weather station name
@@ -303,6 +321,7 @@
         type (hyd_output) :: trans                                          !water transfer in water allocation
         type (hyd_output) :: hin_tot                                        !total inflow hydrograph to the object
         type (hyd_output) :: hout_tot                                       !total outflow hydrograph to the object
+        type (hyd_output) :: conc_prev                                      !concentration of previous timestep for watqual2e routine
         real :: demand                                                      !water irrigation demand (ha-m)
         integer :: day_cur = 0                                              !current hydrograph day in ts
         integer :: day_max                                                  !maximum number of days to store the hydrograph
@@ -344,6 +363,8 @@
         real :: runoff = 0.                     !irrigation surface runoff  |mm
         real :: eff = 1.                        !irrigation efficiency as a fraction of irrigation. Jaehak 2022
         real :: frac_surq                       !fraction of irrigation lost in runoff flow. Jaehak 2022
+        real :: no3 = 0.                        !nitrate concentration in irrigation water  |kg   Jaehak 2023
+        real :: salt = 0.                       !salt concentration in irrigation water  |ppm       
         !hyd_output units are in mm and mg/L
         type (hyd_output) :: water              !irrigation water
       end type irrigation_water_transfer
@@ -666,8 +687,8 @@
         character (len=15) :: growing =  "growing"              !!none         |plant growing             
         character (len=15) :: dormant =  "dormant"              !!none         |plant dormant
         character (len=15) :: lai =  "lai"                      !!none         |leaf area index 
-        character (len=15) :: can_hgt =  "can_hgt"              !!m/m          |canopy height 
-        character (len=15) :: root_dep =  "root_dep"            !!m/m          |root depth 
+        character (len=15) :: can_hgt =  "can_hgt"              !!m            |canopy height 
+        character (len=15) :: root_dep =  "root_dep"            !!m            |root depth 
         character (len=15) :: phuacc =  "phuacc"                !!0-1          |accumulated heat units
         character (len=15) :: tot_m =  "tot_m"                  !!kg/ha        |total biomass 
         character (len=15) :: ab_gr_m =  "ab_gr_m"              !!kg/ha        |above ground biomass
@@ -677,7 +698,24 @@
         character (len=15) :: seed_m = "seed_m"                 !!kg/ha        |seed biomass
       end type plant_header
       type (plant_header) :: plt_hdr
-                          
+      
+      type flood_plain_header        
+        character (len=15) :: inflo =           "        inflo"     !!m3        | inflow 
+        character (len=15) :: outflo =          "       outflo"     !!m3        | outflow             
+        character (len=15) :: dormant =         "      dormant"     !!m3        | evaporation
+        character (len=15) :: tl =              "           tl"     !!m3        | transmission losses
+        character (len=15) :: ev =              "           ev"     !!m3        | evaporation 
+        character (len=15) :: ch_stor_init =    " ch_stor_init"     !!m3        | channel storage at start of time step
+        character (len=15) :: ch_stor =         "      ch_stor"     !!m3        | channel storage at end of time step
+        character (len=15) :: fp_stor_init =    " fp_stor_init"     !!m3        | flood plain storage at start of time step (all flood plain storage above wetland emergency volume)
+        character (len=15) :: fp_stor =         "      fp_stor"     !!m3        | flood plain storage at end of time step
+        character (len=15) :: tot_stor_init =   "tot_stor_init"     !!m3        | total channel + wetland storage at start of time step
+        character (len=15) :: tot_stor =        "     tot_stor"     !!m3        | total channel + wetland storage at end of time step
+        character (len=15) :: wet_stor_init =   "wet_stor_init"     !!m3        | wetland flood plain storage at start of time step
+        character (len=15) :: wet_stor =        "     wet_stor"     !!m3        | wetland flood plain storage at end of time step
+      end type flood_plain_header
+      type (flood_plain_header) :: fp_hdr
+      
       type ch_watbod_header 
         character (len=6) :: day           = "  jday"       
         character (len=6) :: mo            = "   mon"
@@ -749,6 +787,9 @@
         character (len=15) :: lag    =  "           tons"        !! tons         |detached large ag
         character (len=15) :: grv    =  "           tons"        !! tons         |gravel
         character (len=15) :: temp   =  "               "        !! deg c        |temperature
+        !Jaehak 2023
+        !character (len=15) :: salt   =  "             kg"        !! deg c        |temperature
+        !character (len=15) :: pest   =  "             mg"        !! deg c        |temperature
       end type hyd_header_units1
       type (hyd_header_units1) :: hyd_hdr_units1 
          
@@ -771,6 +812,9 @@
         character (len=15) :: lag    =  "           tons"        !! tons         |detached large ag
         character (len=15) :: grv    =  "           tons"        !! tons         |gravel
         character (len=15) :: temp   =  "               "        !! deg c        |temperature
+        !Jaehak 2023
+        !character (len=15) :: salt   =  "             kg"        !! deg c        |temperature
+        !character (len=15) :: pest   =  "             mg"        !! deg c        |temperature
       end type hyd_header_units3
       type (hyd_header_units3) :: hyd_hdr_units3 
 

@@ -106,16 +106,16 @@
       do ihru = 1, sp_ob%hru
         !! allocate soil layers
         isol = hru(ihru)%dbs%soil
-        wfsh(ihru) = 10. * Exp(6.5309 - 7.32561* sol(isol)%phys(1)%por +    &
-      3.809479 * sol(isol)%phys(1)%por**2+0.001583 *                        &
-      sol(isol)%phys(1)%clay **2 + 0.000344 * sol(isol)%phys(1)%sand*       &
-      sol(isol)%phys(1)%clay - 0.049837 * sol(isol)%phys(1)%por *           &
-      sol(isol)%phys(1)%sand + 0.001608*sol(isol)%phys(1)%por ** 2 *        &
-      sol(isol)%phys(1)%sand ** 2+0.001602*sol(isol)%phys(1)%por ** 2 *     &
-      sol(isol)%phys(1)%clay**2-0.0000136*sol(isol)%phys(1)%sand ** 2       &
-      * sol(isol)%phys(1)%clay-0.003479*sol(isol)%phys(1)%clay ** 2 *       &
-      sol(isol)%phys(1)%por - 0.000799 * sol(isol)%phys(1)%sand ** 2 *      & 
-      sol(isol)%phys(1)%por)
+        wfsh(ihru) = 10. * Exp(6.5309 - 7.32561* sol(isol)%phys(1)%por +            &
+            3.809479 * sol(isol)%phys(1)%por**2+0.001583 *                          &
+            sol(isol)%phys(1)%clay **2 + 0.000344 * sol(isol)%phys(1)%sand*         &
+            sol(isol)%phys(1)%clay - 0.049837 * sol(isol)%phys(1)%por *             &
+            sol(isol)%phys(1)%sand + 0.001608*sol(isol)%phys(1)%por ** 2 *          &
+            sol(isol)%phys(1)%sand ** 2+0.001602*sol(isol)%phys(1)%por ** 2 *       &
+            sol(isol)%phys(1)%clay**2-0.0000136*sol(isol)%phys(1)%sand ** 2         &
+            * sol(isol)%phys(1)%clay-0.003479*sol(isol)%phys(1)%clay ** 2 *         &
+            sol(isol)%phys(1)%por - 0.000799 * sol(isol)%phys(1)%sand ** 2 *        & 
+            sol(isol)%phys(1)%por)
         soil(ihru) = sol(isol)%s
         nly = soil(ihru)%nly
         allocate (soil(ihru)%ly(nly))
@@ -163,8 +163,8 @@
    
         !! allocate soil1 arrays - carbon/nutrients
         nly = soil(ihru)%nly
-        allocate (cs_soil(ihru)%ly(nly))
-        allocate (soil1(ihru)%sw(nly))
+        !allocate (cs_soil(ihru)%ly(nly))
+        allocate (soil1(ihru)%sw(nly), source = 0.)
         allocate (soil1(ihru)%cbn(nly))
         allocate (soil1(ihru)%sed(nly))
         allocate (soil1(ihru)%mn(nly))
@@ -182,7 +182,7 @@
         allocate (soil1(ihru)%man(nly))
         allocate (soil1(ihru)%water(nly))
 
-        allocate (soil1_init(ihru)%sw(nly))
+        allocate (soil1_init(ihru)%sw(nly), source = 0.)
         allocate (soil1_init(ihru)%cbn(nly))
         allocate (soil1_init(ihru)%sed(nly))
         allocate (soil1_init(ihru)%mn(nly))
@@ -200,8 +200,8 @@
         allocate (soil1_init(ihru)%man(nly))
         allocate (soil1_init(ihru)%water(nly))
         
-        !! initialize carbon and nutrient contents for each hru
-        call soil_nutcarb_init(isol)
+        call soil_nutcarb_init(isol)       !! initialize soil nutrient/carbon parameters Jaehak 2024
+
         
       end do
 

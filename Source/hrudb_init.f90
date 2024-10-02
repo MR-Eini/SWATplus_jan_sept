@@ -2,12 +2,14 @@
     
       use hydrograph_module, only : sp_ob, sp_ob1, ob
       use hru_module, only : hru, hru_db
+      use landuse_data_module
       
       implicit none
 
       integer :: imp                  !           |
       integer :: ihru                 !none       |counter 
-      integer :: iob                  !           |
+      integer :: iob                  !           | 
+      integer :: ilu                  !           |
       integer :: ihru_db              !           | 
 
       !!assign database pointers for the hru
@@ -21,6 +23,8 @@
         hru(ihru)%area_ha = ob(iob)%area_ha
         hru(ihru)%km = ob(iob)%area_ha / 100.
         hru(ihru)%land_use_mgt_c = hru_db(ihru_db)%dbsc%land_use_mgt
+        ilu = hru(ihru)%dbs%land_use_mgt
+        hru(ihru)%cal_group = lum(ilu)%cal_group
       end do
 
       return

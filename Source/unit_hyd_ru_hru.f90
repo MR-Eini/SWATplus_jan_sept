@@ -15,7 +15,7 @@
       integer :: ihyd           !       |receiving hyd counter
       real :: tc                !       |time of concentration for incoming hru and ru
 
-      if (time%step > 0) then
+      if (time%step > 1) then
         do iihru = 1, sp_ob%hru
           iob = sp_ob1%hru + iihru - 1
           call unit_hyd (tconc(iihru), ob(iob)%uh)

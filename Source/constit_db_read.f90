@@ -22,15 +22,15 @@
       eof = 0
       imax = 0
       
-      inquire (file="constituents.cs", exist=i_exist)
-      if (.not. i_exist .or. "constituents.cs" == "null") then
+      inquire (file=in_sim%cs_db, exist=i_exist)
+      if (.not. i_exist .or. in_sim%cs_db == "null") then
         allocate (cs_db%pests(0:0))
         allocate (cs_db%paths(0:0))
         allocate (cs_db%metals(0:0))
         allocate (cs_db%salts(0:0))
       else
       do
-        open (106,file="constituents.cs")
+        open (106,file=in_sim%cs_db)
         read (106,*,iostat=eof) titldum
         if (eof < 0) exit
         read (106,*,iostat=eof) cs_db%num_pests

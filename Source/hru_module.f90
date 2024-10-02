@@ -184,7 +184,7 @@
         integer :: vfsi = 0                 !! |none          |on/off flag for vegetative filter strip
         real :: vfsratio = 0.               !! |none          |contouring USLE P factor
         real :: vfscon = 0.                 !! |none          |fraction of the total runoff from the entire field
-        real :: vfsch = 0;                  !! |none          |fraction of flow entering the most concentrated 10% of the VFS.
+        real :: vfsch = 0.                  !! |none          |fraction of flow entering the most concentrated 10% of the VFS.
                                             !!                     which is fully channelized
         integer :: ngrwat = 0
         integer :: grwat_i = 0              !! |none          |On/off Flag for waterway simulation
@@ -215,7 +215,7 @@
         character(len=40) :: land_use_mgt_c
         integer :: lum_group
         character(len=40) :: lum_group_c        !land use group for soft cal and output
-        character(len=40) :: region
+        character(len=40) :: cal_group
         integer :: plant_cov
         integer :: mgt_ops
         integer :: tiledrain = 0
@@ -243,14 +243,15 @@
         integer :: irr_dmd_iauto = 0
         integer :: man_dmd_iauto = 0
         integer :: wet_db = 0                   !none       |pointer to wetland data - saved so turn on/off
-        real :: wet_hc                          !mm/h       |hydraulic conductivity of upper layer - wetlands
-        real :: sno_mm                          !mm H2O     |amount of water in snow on current day
-        real :: water_seep
-        real :: water_evap
+        real :: wet_hc = 0.                     !mm/h       |hydraulic conductivity of upper layer - wetlands
+        real :: sno_mm = 0.                     !mm H2O     |amount of water in snow on current day
+        real :: water_seep = 0.
+        real :: water_evap = 0.
+        real :: wet_obank_in = 0.               !mm         |inflow from overbank into wetlands
         real :: precip_aa
         character(len=1) :: wet_fp = "n"
         character(len=5) :: irr_src = "unlim"   !           |irrigation source, Jaehak 2022
-        real :: strsa
+        real :: strsa = 0.
         real :: irr_hmax = 0                    !mm H2O     |target ponding depth during paddy irrigation Jaehak 2022
         real :: irr_hmin = 0                    !mm H2O     |threshold ponding depth to trigger paddy irrigation
         real :: irr_isc = 0                     !mm H2O     |ID of the source cha/res/aqu for paddy irrigation
@@ -371,7 +372,8 @@
       real, dimension (:), allocatable :: sedminpa,sedminps,sedorgn
       real, dimension (:), allocatable :: sedorgp,sedyld,sepbtm
       real, dimension (:), allocatable :: surfq,surqno3
-      real, dimension (:,:), allocatable :: surqsalt,latqsalt,tilesalt,percsalt,gwupsalt,urbqsalt,irswsalt,irgwsalt,wetqsalt,wtspsalt !rtb salt
+      real, dimension (:,:), allocatable :: surqsalt,latqsalt,tilesalt,percsalt,gwupsalt,urbqsalt,irswsalt,irgwsalt,wetqsalt,   &
+                wtspsalt !rtb salt
       real, dimension (:,:), allocatable :: surqcs,latqcs,tilecs,perccs,gwupcs,urbqcs,sedmcs,irswcs,irgwcs,wetqcs,wtspcs !rtb cs
       real, dimension (:), allocatable :: phubase
       real, dimension (:), allocatable :: dormhr

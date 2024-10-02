@@ -43,12 +43,11 @@
         
       !! allocate erosion output and open file
       allocate (ero_output(sp_ob%hru))
-      open (4000,file = "erosion.out",recl=1200)
-      write (4000,*) bsn%name, prog
-      write (4000,*) ero_hdr
-      write (4000,*) ero_hdr_units
-      
-      
+      open (4001,file = "erosion.out",recl=1200)
+      write (4001,*) bsn%name, prog
+      write (4001,*) ero_hdr
+      write (4001,*) ero_hdr_units
+            
 !!!!! new checker.out file - always prints
       open (4000,file = "checker.out",recl=1200)
       write (4000,*) bsn%name, prog

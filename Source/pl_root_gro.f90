@@ -13,7 +13,10 @@
       integer, intent (in) :: j     !none               |HRU number
       integer :: idp                !                   |
       real :: rto                   !none               |ratio of current years of growth:years to maturity of perennial
+      real :: rto1                  !none               |ratio of current years + 1 of growth:years to maturity of perennial
+      real :: rto2                  !none               |ratio of 1 year:years to maturity of perennial
       real :: phumax
+      real :: rdmax_yr
              
       idp = pcom(j)%plcur(ipl)%idplt
 
@@ -21,11 +24,11 @@
       if (pldb(idp)%typ == "warm_annual" .or. pldb(idp)%typ == "cold_annual" .or.  &
              pldb(idp)%typ == "warm_annual_tuber" .or. pldb(idp)%typ == "cold_annual_tuber") then
         pcom(j)%plg(ipl)%root_dep = 2.5 * pcom(j)%plcur(ipl)%phuacc * 1000. * pldb(idp)%rdmx
-        if (pcom(j)%plg(ipl)%root_dep > soil(j)%zmx) pcom(j)%plg(ipl)%root_dep = soil(j)%zmx
-        if (pcom(j)%plg(ipl)%root_dep < 25.4) pcom(j)%plg(ipl)%root_dep = 25.4
       else
-        pcom(j)%plg(ipl)%root_dep = amin1 (soil(j)%zmx, 1000. * pldb(idp)%rdmx)
+        pcom(j)%plg(ipl)%root_dep = 2.5 * pcom(j)%plcur(ipl)%phuacc_p * 1000. * pldb(idp)%rdmx
       end if
+      if (pcom(j)%plg(ipl)%root_dep > soil(j)%zmx) pcom(j)%plg(ipl)%root_dep = soil(j)%zmx
+      if (pcom(j)%plg(ipl)%root_dep < 25.4) pcom(j)%plg(ipl)%root_dep = 25.4
 
       !! calculate total root mass
       if (pldb(idp)%typ == "perennial") then 

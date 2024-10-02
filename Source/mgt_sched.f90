@@ -121,7 +121,11 @@
               idp = pcom(j)%plcur(ipl)%idplt
               if (pldb(idp)%trig == "moisture_gro") then
                 if (mgt%op3 == 0) then
-                  if (pcom(j)%plcur(ipl)%mseas == "y") then
+                  !! if precip/pet ratio was not triggered during monsoon season - reset phenology
+                  if (pcom(j)%plcur(ipl)%gro == "n") then
+                    pcom(j)%plcur(ipl)%phuacc = 0.
+                    pcom(j)%plcur(ipl)%gro = "y" 
+                    pcom(j)%plcur(ipl)%idorm = "n"
                     pcom(j)%plcur(ipl)%mseas = "n"
                   end if
                 end if 
@@ -422,29 +426,34 @@
             endif 
             !! added below changed plcur(ipl) to plcur(j) and plm(ipl) to plm(j) gsm 1/30/2018
             if (pco%mgtout ==  "y") then
-              write (2612, *) j, time%yrc, time%mo, time%day_mo, pldb(idp)%plantnm,  "    DRAINAGE_MGT ",       &
-                   phubase(j), pcom(j)%plcur(j)%phuacc,  soil(j)%sw,                                  &
-                   pl_mass(j)%tot(j)%m, rsd1(j)%tot_com%m, sol_sumno3(j),                                   &
-                   sol_sumsolp(j),hru(j)%lumv%sdr_dep
+              write (2612, *) j, time%yrc, time%mo, time%day_mo, pldb(idp)%plantnm,  "  DRAIN_CONTROL",         &
+                   phubase(j), pcom(j)%plcur(j)%phuacc,  soil(j)%sw, pl_mass(j)%tot(j)%m, rsd1(j)%tot_com%m,    &
+                   sol_sumno3(j), sol_sumsolp(j),hru(j)%lumv%sdr_dep
             endif
 
           case ("weir")    !! set/adjust weir height
 
             !! set weir height and adjust principal spillway storage and depth
             wet_ob(j)%weir_hgt = mgt%op3 / 1000. !weir height, m
-            wet_ob(j)%pvol = hru(j)%area_ha * wet_ob(j)%weir_hgt * 10.
+            wet_ob(j)%pvol = hru(j)%area_ha * wet_ob(j)%weir_hgt * 10000. !m3
             if (wet_ob(j)%evol < wet_ob(j)%pvol*1.1) then
               wet_ob(j)%evol = wet_ob(j)%pvol * 1.1   
             endif
               
           case ("irrp")  !! continuous irrigation to maintain surface ponding in rice fields Jaehak 2022
-            hru(j)%irr_src = mgt%op_plant                   !irrigation source: cha; res; aqu; or unlim													
-            hru(j)%irr_hmin = irrop_db(mgt%op1)%dep_mm     !threshold ponding depth, mm
+            hru(j)%irr_src = mgt%op_plant                   !irrigation source: cha; res; aqu; or unlim
+            hru(j)%irr_isc = mgt%op3                        !irrigation source object ID: cha; res; aqu; or unlim
+            hru(j)%irr_hmax = irrop_db(mgt%op1)%amt_mm     !irrigation amount in irr.org, mm
+            hru(j)%irr_hmin = hru(j)%irr_hmax * 0.9        !threshold ponding depth, mm
             irrig(j)%eff = irrop_db(mgt%op1)%eff
             irrig(j)%frac_surq = irrop_db(mgt%op1)%surq
+            irrig(j)%salt = irrop_db(mgt%op1)%salt  !ppm salt  Jaehak 2023
+            irrig(j)%no3 = irrop_db(mgt%op1)%no3 !ppm  no3
             pcom(j)%days_irr = 1            ! reset days since last irrigation
             if (mgt%op3 < 0) then
               hru(j)%irr_hmax = irrop_db(mgt%op1)%amt_mm     !irrigation amount in irr.org, mm
+
+              if (hru(j)%irr_hmax>0) hru(j)%paddy_irr = 1 !paddy irrigation is on with manual scheduling
             else
               hru(j)%irr_hmax = mgt%op3       !target ponding depth, mm
               if (mgt%op3 > 0) then

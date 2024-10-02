@@ -32,22 +32,22 @@
         
         if (iprop > 0) then
           ihyd = wet_dat(iprop)%hyd
-          if (wet_hyd(ihyd)%k > 0) then
-    		    hru(iihru)%wet_hc = wet_hyd(ihyd)%k  !mm/hr
-    		  else
-    		    hru(iihru)%wet_hc = soil(iihru)%phys(1)%k 
-    		  endif
+          !if (wet_hyd(ihyd)%k > 0.) then
+            hru(iihru)%wet_hc = wet_hyd(ihyd)%k  !mm/hr
+          !else
+          !  hru(iihru)%wet_hc = soil(iihru)%phys(1)%k
+          !endif
           !! ha*mm*10. => m**3  - assume entire hru is wet and don't use fractional inputs (for simplicity)
           wet_ob(iihru)%evol = hru(iihru)%area_ha * wet_hyd(ihyd)%edep * 10.  ! * wet_hyd(ihyd)%esa
           wet_ob(iihru)%pvol = hru(iihru)%area_ha * wet_hyd(ihyd)%pdep * 10.  ! * wet_hyd(ihyd)%psa
           wet_ob(iihru)%psa = wet_hyd(ihyd)%psa * hru(iihru)%area_ha 
           wet_ob(iihru)%esa = wet_hyd(ihyd)%esa * hru(iihru)%area_ha 
           !! set initial weir height to principal depth - m
-          if (db_mx%res_weir > 0.and.wet_ob(iihru)%iweir>0) then !if available, read from weir.res Jaehak 2022
+          if (db_mx%res_weir > 0 .and. wet_ob(iihru)%iweir > 0) then !if available, read from weir.res Jaehak 2022
             wet_ob(iihru)%weir_hgt = res_weir(iweir)%h  !m weir height
             wet_ob(iihru)%weir_wid = res_weir(iweir)%w  !m, weir width
             !update pvol/evol according to weir height for paddy weir discharge. Jaehak 2023
-            wet_ob(iihru)%pvol = hru(iihru)%area_ha * wet_ob(iihru)%weir_hgt * 10.**4  ! m3
+            wet_ob(iihru)%pvol = hru(iihru)%area_ha * res_weir(iweir)%h * 10.**4  ! m3
             if (wet_ob(iihru)%evol < wet_ob(iihru)%pvol*1.2) then
               wet_ob(iihru)%evol = wet_ob(iihru)%pvol * 1.2   
             endif

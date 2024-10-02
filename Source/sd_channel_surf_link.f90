@@ -14,11 +14,10 @@
       integer :: iihru                !none          |hru counter 
       integer :: ihru_tot             !none          |total number of hru in the flood plain   
 
-      ihru_tot = 0
-        
       do ics = 1, sp_ob%chandeg
         if (sd_ch(ics)%fp%obj_tot > 0) then
         !! determine number of hru's
+        ihru_tot = 0
         do ii = 1, sd_ch(ics)%fp%obj_tot
           iobtyp = sd_ch(ics)%fp%obtyp(ii)     !object type
           select case (iobtyp)

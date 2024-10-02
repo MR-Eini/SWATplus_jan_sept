@@ -77,13 +77,8 @@
                 cond_met = "n"
                 exit
               end if
-            case ("region")     !for hru    
-              if (cal_upd(ichg_par)%cond(ic)%targc /= hru(ielem)%region) then 
-                cond_met = "n"
-                exit
-              end if
-            case ("region_lte")     !for hru    
-              if (cal_upd(ichg_par)%cond(ic)%targc /= hru(ielem)%region) then 
+            case ("cal_grouop")     !for hru    
+              if (cal_upd(ichg_par)%cond(ic)%targc /= hru(ielem)%cal_group) then 
                 cond_met = "n"
                 exit
               end if

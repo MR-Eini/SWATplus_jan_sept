@@ -66,7 +66,7 @@
             write (2094,*) bsn%name, prog
             write (2094,'(*(G0.3,:","))') aqu_hdr
             write (2094,'(*(G0.3,:","))') aqu_hdr_units
-            write (9000,*) "BASIN_AQUIFER                 basin_aqu_day.csv"
+            write (9000,*) "BASIN_AQUIFER             basin_aqu_day.csv"
           end if
         endif
         
@@ -122,13 +122,13 @@
           write (2100,*) bsn%name, prog
           write (2100,*) ch_wbod_hdr, hyd_stor_hdr, hyd_in_hdr, hyd_out_hdr
           write (2100,*) ch_wbod_hdr_units, hyd_hdr_units3, hyd_hdr_units3, hyd_hdr_units3          
-          write (9000,*) "BASIN_RESERVOIR               basin_res_day.txt"
+          write (9000,*) "BASIN_RESERVOIR           basin_res_day.txt"
           if (pco%csvout == "y") then 
             open (2104,file="basin_res_day.csv", recl = 1500)
             write (2104,*) bsn%name, prog
             write (2104,'(*(G0.3,:","))') ch_wbod_hdr, hyd_stor_hdr, hyd_in_hdr, hyd_out_hdr
             write (2104,'(*(G0.3,:","))') ch_wbod_hdr_units, hyd_hdr_units3, hyd_hdr_units3, hyd_hdr_units3
-            write (9000,*) "BASIN_RESERVOIR               basin_res_day.csv"
+            write (9000,*) "BASIN_RESERVOIR           basin_res_day.csv"
           end if
         endif
         
@@ -137,13 +137,13 @@
         write (2101,*) bsn%name, prog
         write (2101,*) ch_wbod_hdr, hyd_stor_hdr, hyd_in_hdr, hyd_out_hdr
         write (2101,*) ch_wbod_hdr_units, hyd_hdr_units3, hyd_hdr_units3, hyd_hdr_units3
-        write (9000,*) "BASIN_RESERVOIR             basin_res_mon.txt"
+        write (9000,*) "BASIN_RESERVOIR           basin_res_mon.txt"
        if (pco%csvout == "y") then 
           open (2105,file="basin_res_mon.csv",recl = 1500)
           write (2105,*) bsn%name, prog
           write (2105,'(*(G0.3,:","))') ch_wbod_hdr, hyd_stor_hdr, hyd_in_hdr, hyd_out_hdr
           write (2105,'(*(G0.3,:","))') ch_wbod_hdr_units, hyd_hdr_units3, hyd_hdr_units3, hyd_hdr_units3
-          write (9000,*) "BASIN_RESERVOIR               basin_res_mon.csv"
+          write (9000,*) "BASIN_RESERVOIR           basin_res_mon.csv"
        end if
       end if
        
@@ -152,13 +152,13 @@
           write (2102,*) bsn%name, prog
           write (2102,*) ch_wbod_hdr, hyd_stor_hdr, hyd_in_hdr, hyd_out_hdr
           write (2102,*) ch_wbod_hdr_units, hyd_hdr_units3, hyd_hdr_units3, hyd_hdr_units3
-          write (9000,*) "BASIN_RESERVOIR               basin_res_yr.txt"
+          write (9000,*) "BASIN_RESERVOIR           basin_res_yr.txt"
           if (pco%csvout == "y") then 
             open (2106,file="basin_res_yr.csv", recl = 1500)
             write (2106,*) bsn%name, prog
             write (2106,'(*(G0.3,:","))') ch_wbod_hdr, hyd_stor_hdr, hyd_in_hdr, hyd_out_hdr
             write (2106,'(*(G0.3,:","))') ch_wbod_hdr_units, hyd_hdr_units3, hyd_hdr_units3, hyd_hdr_units3
-            write (9000,*) "BASIN_RESERVOIR              basin_res_yr.txt"
+            write (9000,*) "BASIN_RESERVOIR           basin_res_yr.csv"
           end if
        endif
         
@@ -173,7 +173,7 @@
           write (2107,*) bsn%name, prog
           write (2107,'(*(G0.3,:","))') ch_wbod_hdr, hyd_stor_hdr, hyd_in_hdr, hyd_out_hdr
           write (2107,'(*(G0.3,:","))') ch_wbod_hdr_units, hyd_hdr_units3, hyd_hdr_units3, hyd_hdr_units3
-          write (9000,*) "BASIN_RESERVOIR         basin_res_aa.csv"
+          write (9000,*) "BASIN_RESERVOIR           basin_res_aa.csv"
        end if
       end if
 !! BASIN RESERVOIR OUTPUT
@@ -229,7 +229,7 @@
         write (4603,*) bsn%name, prog
         write (4603,*) hyd_hdr_time, hyd_hdr              
         write (4603,*) hyd_hdr_units
-        write (9000,*) "RECALL AA                 recall_aa.txt"
+        write (9000,*) "RECALL_AA                 recall_aa.txt"
          if (pco%csvout == "y") then 
             open (4607,file="recall_aa.csv",recl = 1500)
             write (4607,*) bsn%name, prog
@@ -427,6 +427,68 @@
           end if
         end if
 !! BASIN SWAT DEG CHANNEL MORPH OUTPUT
+        
+!! BASIN SWAT DEG CHANBUD OUTPUT
+        if (pco%sd_chan_bsn%d == "y") then
+          open (2128,file="basin_sd_chanbud_day.txt", recl = 1500)
+          write (2128,*) bsn%name, prog
+          write (2128,*) sdch_bud_hdr
+          write (2128,*) sdch_bud_hdr_units
+          write (9000,*) "BASIN_SWAT_DEG_CHAN_BUD   basin_sd_chanbud_day.txt"
+          if (pco%csvout == "y") then 
+            open (2132,file="basin_sd_chanbud_day.csv", recl = 1500)
+            write (2132,*) bsn%name, prog
+            write (2132,'(*(G0.3,:","))') sdch_bud_hdr
+            write (2132,'(*(G0.3,:","))') sdch_bud_hdr_units        
+            write (9000,*) "BASIN_SWAT_DEG_CHAN_BUD   basin_sd_chanbud_day.csv"
+          end if
+        endif
+        
+       if (pco%sd_chan_bsn%m == "y") then
+        open (2129,file="basin_sd_chanbud_mon.txt",recl = 1500)
+        write (2129,*) bsn%name, prog
+        write (2129,*) sdch_bud_hdr
+        write (2129,*) sdch_bud_hdr_units
+        write (9000,*) "BASIN_SWAT_DEG_CHAN_BUD   basin_sd_chanbud_mon.txt"
+         if (pco%csvout == "y") then 
+           open (2133,file="basin_sd_chanbud_mon.csv",recl = 1500)
+           write (2133,*) bsn%name, prog
+           write (2133,'(*(G0.3,:","))') sdch_bud_hdr 
+           write (2133,'(*(G0.3,:","))') sdch_bud_hdr_units        
+           write (9000,*) "BASIN_SWAT_DEG_CHAN_BUD   basin_sd_chanbud_mon.csv"
+         end if
+        end if
+       
+        if (pco%sd_chan_bsn%y == "y") then
+          open (2130,file="basin_sd_chanbud_yr.txt", recl = 1500)
+          write (2130,*) bsn%name, prog
+          write (2130,*) sdch_bud_hdr 
+          write (2130,*) sdch_bud_hdr_units
+          write (9000,*) "BASIN_SWAT_DEG_CHAN_BUD   basin_sd_chanbud_yr.txt"
+          if (pco%csvout == "y") then 
+            open (2134,file="basin_sd_chanbud_yr.csv", recl = 1500)
+            write (2134,*) bsn%name, prog
+            write (2134,'(*(G0.3,:","))') sdch_bud_hdr
+            write (2134,'(*(G0.3,:","))') sdch_bud_hdr_units        
+            write (9000,*) "BASIN_SWAT_DEG_CHAN_BUD   basin_sd_chanbud_yr.csv"
+          end if
+        endif
+        
+        if (pco%sd_chan_bsn%a == "y") then
+          open (2131,file="basin_sd_chanbud_aa.txt",recl = 1500)
+          write (2131,*) bsn%name, prog
+          write (2131,*) sdch_bud_hdr 
+          write (2131,*) sdch_bud_hdr_units
+          write (9000,*) "BASIN_SWAT_DEG_CHAN_BUD   basin_sd_chanbud_aa.txt"
+          if (pco%csvout == "y") then 
+            open (2135,file="basin_sd_chanbud_aa.csv",recl = 1500)
+            write (2135,*) bsn%name, prog
+            write (2135,'(*(G0.3,:","))') sdch_bud_hdr 
+            write (2135,'(*(G0.3,:","))') sdch_bud_hdr_units 
+            write (9000,*) "BASIN_SWAT_DEG_CHAN_BUD   basin_sd_chanbud_aa.csv"
+          end if
+        end if
+!! BASIN SWAT DEG CHANBUD OUTPUT
 
 
 !! BASIN RECALL OUTPUT (PTS - Point Source)
